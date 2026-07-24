@@ -1,0 +1,6 @@
+{
+  "vix_buy_level": 25.0,
+  "vix_sell_level": 20.0,
+  "source": "actual_daily_vix",
+  "rule_type": "fixed_levels"
+}

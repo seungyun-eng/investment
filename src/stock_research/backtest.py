@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Generic, TypeVar
+from typing import Generic, TypeVar
 
 import pandas as pd
 
 P = TypeVar("P")
 Signal = Callable[[pd.Series, P], bool]
+LogDetails = Callable[[pd.Series, P, str], dict[str, object]]
 
 
 @dataclass(frozen=True)
@@ -17,10 +19,12 @@ class BacktestSummary:
     roi_percent: float
     buys: int
     sells: int
+    liquidations: int
+    completed_trades: int
 
 
 @dataclass
-class BacktestResult:
+class BacktestResult(Generic[P]):
     trades: pd.DataFrame
     summary: BacktestSummary
 
@@ -36,6 +40,7 @@ def run_long_only(
     extra_contribution: float = 10_000.0,
     cooldown_days: int = 0,
     liquidate_at_end: bool = True,
+    log_details: LogDetails[P] | None = None,
 ) -> BacktestResult:
     if data.empty:
         raise ValueError("Backtest data is empty.")
@@ -43,7 +48,6 @@ def run_long_only(
     missing = required - set(data.columns)
     if missing:
         raise ValueError(f"Backtest missing columns: {sorted(missing)}")
-
     frame = data.copy().sort_values("날짜").reset_index(drop=True)
     frame["날짜"] = pd.to_datetime(frame["날짜"], errors="coerce")
     frame["종가"] = pd.to_numeric(frame["종가"], errors="coerce")
@@ -51,74 +55,52 @@ def run_long_only(
     if frame.empty:
         raise ValueError("No valid backtest rows after date/price conversion.")
 
-    cash = float(initial_cash)
-    shares = 0.0
+    cash, shares = float(initial_cash), 0.0
     total_injected = float(initial_cash)
     last_buy_date = None
-    buys = sells = 0
-    logs: list[dict] = []
+    buys = sells = liquidations = 0
+    logs: list[dict[str, object]] = []
+
+    def add_log(row: pd.Series, action: str, price: float) -> None:
+        total_value = cash + shares * price
+        entry: dict[str, object] = {
+            "Date": row["날짜"], "Action": action, "StockPrice": price,
+            "Cash": cash, "Shares": shares, "TotalValue": total_value,
+            "TotalInjected": total_injected,
+            "ROI": (total_value / total_injected - 1.0) * 100.0,
+        }
+        if log_details:
+            entry.update(log_details(row, params, action))
+        logs.append(entry)
 
     for _, row in frame.iterrows():
-        date = row["날짜"]
-        price = float(row["종가"])
-        cooldown_ok = (
-            last_buy_date is None
-            or (date - last_buy_date).days >= cooldown_days
-        )
-
-        # Keep optimization and simulation consistent: only open a new position when flat.
+        date, price = row["날짜"], float(row["종가"])
+        cooldown_ok = last_buy_date is None or (date - last_buy_date).days >= cooldown_days
         if shares == 0 and cooldown_ok and buy_signal(row, params):
             if extra_on_buy:
                 cash += extra_contribution
                 total_injected += extra_contribution
-            shares = cash / price
-            cash = 0.0
-            last_buy_date = date
-            buys += 1
-            logs.append({
-                "날짜": date, "액션": "BUY", "가격": price,
-                "보유주": shares, "현금": cash,
-                "총자산": cash + shares * price, "투입금액": total_injected,
-            })
+            shares, cash = cash / price, 0.0
+            last_buy_date, buys = date, buys + 1
+            add_log(row, "BUY", price)
         elif shares > 0 and sell_signal(row, params):
-            cash = shares * price
-            shares = 0.0
-            last_buy_date = None
-            sells += 1
-            logs.append({
-                "날짜": date, "액션": "SELL", "가격": price,
-                "보유주": shares, "현금": cash,
-                "총자산": cash, "투입금액": total_injected,
-            })
+            cash, shares = shares * price, 0.0
+            last_buy_date, sells = None, sells + 1
+            add_log(row, "SELL", price)
 
     if shares > 0 and liquidate_at_end:
         row = frame.iloc[-1]
         price = float(row["종가"])
-        cash = shares * price
-        shares = 0.0
-        sells += 1
-        logs.append({
-            "날짜": row["날짜"], "액션": "LIQUIDATE", "가격": price,
-            "보유주": 0.0, "현금": cash,
-            "총자산": cash, "투입금액": total_injected,
-        })
+        cash, shares = shares * price, 0.0
+        liquidations += 1
+        add_log(row, "LIQUIDATE", price)
 
     final_value = cash + shares * float(frame.iloc[-1]["종가"])
     roi = (final_value / total_injected - 1.0) * 100.0
-    trades = pd.DataFrame(logs)
-    if not trades.empty:
-        trades["ROI(%)"] = (
-            trades["총자산"] / trades["투입금액"] - 1.0
-        ) * 100.0
-
     return BacktestResult(
-        trades=trades,
+        trades=pd.DataFrame(logs),
         summary=BacktestSummary(
-            initial_cash=initial_cash,
-            total_injected=total_injected,
-            final_value=final_value,
-            roi_percent=roi,
-            buys=buys,
-            sells=sells,
+            initial_cash, total_injected, final_value, roi, buys, sells,
+            liquidations, sells,
         ),
     )

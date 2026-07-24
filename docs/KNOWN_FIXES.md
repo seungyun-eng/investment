@@ -1,5 +1,21 @@
 # 통합 과정에서 반영한 수정
 
+## Actual daily VIX redesign
+
+- VIX is an observed daily input merged to stock rows strictly by date; it is
+  never generated, forward-filled, or optimized.
+- Buy/sell VIX levels are fixed user configuration in
+  `config/vix_strategy.json`.
+- Optuna searches only RSI buy, RSI sell, and Bollinger buffer values, and
+  rejects trials with fewer than two signal-completed BUY-to-SELL trades.
+- End-of-period `LIQUIDATE` is tracked separately and is not a normal SELL.
+- To avoid unrealistically sparse signals, VIX remains a mandatory fixed gate
+  while technical eligibility uses `RSI AND (Bollinger OR MACD)` for both BUY
+  and SELL.
+- Existing VIX Index 1 and Index 2 results are **legacy/invalid** because their
+  VIX thresholds were optimized. They are retained unchanged for audit history
+  and must not be used as corrected results.
+
 ## 경로
 
 - `C:\Users\seung`, `C:\Users\LabPC`, `D:\주식` 하드코딩 제거
@@ -20,7 +36,8 @@
 - Technical 시뮬레이션 결과 폴더가 생성되지 않던 문제 수정
 - 매수 포지션이 이미 있는데도 같은 날/연속일에 다시 BUY 로그가 생기던 문제 수정
 - ROI를 일관되게 순수익률 `(최종자산 / 총투입금 - 1) × 100`으로 계산
-- VIX의 `vix_sell_th <= vix_buy_th` 제약을 TPE와 CMA 모두에 적용
+- Legacy note (superseded): earlier code constrained optimized VIX thresholds;
+  the corrected strategy removes both thresholds from every optimization space.
 - VIX와 Technical 파라미터 Excel을 별도 파일로 분리
 
 ## 데이터

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict
 
 from stock_research.data_loading import load_processed_with_vix
-from stock_research.optimization import optimize_vix
+from stock_research.optimization import optimize_vix, run_vix_backtest
 from stock_research.parameters import append_parameter_record
 from stock_research.paths import load_paths
+from stock_research.strategies.vix import load_vix_rule_config
 
 
 def main() -> None:
@@ -22,15 +22,26 @@ def main() -> None:
     data = load_processed_with_vix(
         paths.processed, paths.macro, args.company, args.start, args.end
     )
+    rules = load_vix_rule_config()
     params, roi, importance = optimize_vix(
-        data, tpe_trials=args.tpe_trials, cma_trials=args.cma_trials
+        data, rules=rules, tpe_trials=args.tpe_trials, cma_trials=args.cma_trials
     )
+    result = run_vix_backtest(data, params)
     record = {
         "종목": args.company,
         "Start": args.start,
         "End": args.end,
         "ROI(%)": roi,
-        **asdict(params),
+        "rsi_buy_th": params.rsi_buy_th,
+        "rsi_sell_th": params.rsi_sell_th,
+        "boll_buffer": params.boll_buffer,
+        "ActualVixBuyLevel": rules.vix_buy_level,
+        "ActualVixSellLevel": rules.vix_sell_level,
+        "VixRuleSource": rules.source,
+        "BuyCount": result.summary.buys,
+        "SignalSellCount": result.summary.sells,
+        "LiquidationCount": result.summary.liquidations,
+        "CompletedTrades": result.summary.completed_trades,
         **{f"importance_{k}": v for k, v in importance.items()},
     }
     output = append_parameter_record(paths.parameters, "vix", record)

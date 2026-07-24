@@ -1,0 +1,24 @@
+Metadata-Version: 2.4
+Name: stock-research
+Version: 0.1.0
+Summary: OneDrive-first stock data, backtest, financial analysis, and ML tools
+Requires-Python: >=3.11
+Requires-Dist: numpy<3,>=1.26
+Requires-Dist: pandas<3,>=2.1
+Requires-Dist: openpyxl>=3.1
+Requires-Dist: xlsxwriter>=3.2
+Requires-Dist: yfinance>=0.2
+Requires-Dist: pandas-datareader>=0.10
+Requires-Dist: requests>=2.31
+Requires-Dist: beautifulsoup4>=4.12
+Requires-Dist: optuna>=4.0
+Requires-Dist: cmaes>=0.11
+Requires-Dist: plotly>=5.20
+Requires-Dist: selenium>=4.20
+Requires-Dist: webdriver-manager>=4.0
+Provides-Extra: ml
+Requires-Dist: tensorflow>=2.15; extra == "ml"
+Requires-Dist: scikit-learn>=1.4; extra == "ml"
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: ruff>=0.6; extra == "dev"

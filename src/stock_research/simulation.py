@@ -11,7 +11,13 @@ from .strategies.technical import (
     technical_buy_signal,
     technical_sell_signal,
 )
-from .strategies.vix import VixParams, vix_buy_signal, vix_sell_signal
+from .strategies.vix import (
+    VixParams,
+    load_vix_rule_config,
+    vix_buy_signal,
+    vix_sell_signal,
+    vix_trade_log_details,
+)
 
 
 def run_strategy(
@@ -23,10 +29,18 @@ def run_strategy(
 ) -> BacktestResult:
     strategy = strategy.lower()
     if strategy == "vix":
-        typed = VixParams(**{k: float(params[k]) for k in VixParams.__annotations__})
+        rules = load_vix_rule_config()
+        typed = VixParams(
+            rsi_buy_th=float(params["rsi_buy_th"]),
+            rsi_sell_th=float(params["rsi_sell_th"]),
+            boll_buffer=float(params["boll_buffer"]),
+            vix_buy_level=rules.vix_buy_level,
+            vix_sell_level=rules.vix_sell_level,
+        )
         return run_long_only(
             data, typed, vix_buy_signal, vix_sell_signal,
             extra_on_buy=extra_on_buy,
+            log_details=vix_trade_log_details,
         )
     if strategy == "technical":
         typed = TechnicalParams(
@@ -128,7 +142,8 @@ def save_simulation_outputs(
     for label, frame in outputs.items():
         if frame.empty:
             continue
-        roi = float(frame["ROI(%)"].iloc[-1]) if "ROI(%)" in frame else float("nan")
+        roi_column = "ROI" if "ROI" in frame else "ROI(%)"
+        roi = float(frame[roi_column].iloc[-1]) if roi_column in frame else float("nan")
         filename = (
             f"{parameter_index}_{company}_{strategy}_{label}_"
             f"{start}_{end}_ROI_{roi:.2f}.csv"

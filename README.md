@@ -1,5 +1,11 @@
 # Stock Research Project
 
+> **VIX result validity:** Existing VIX parameter/result Index 1 and Index 2 are
+> legacy/invalid because they optimized VIX thresholds. They must not be used for
+> simulation or overwritten. Corrected runs use actual daily VIX merged strictly
+> by date and fixed levels from `config/vix_strategy.json`; a new parameter index
+> is appended only after a successful corrected optimization.
+
 기존 Jupyter Notebook들을 **하나의 GitHub 저장소 안에서 기능별로 통합**한 프로젝트입니다.
 
 중요한 점은 **모든 기능이 한 파일에 들어 있지는 않으며**, 원하는 작업만 따로 실행합니다.

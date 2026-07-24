@@ -10,14 +10,28 @@ def test_net_roi_and_single_position():
         "buy": [True, True, False, False],
         "sell": [False, False, False, True],
     })
-
     result = run_long_only(
-        frame,
-        None,
-        lambda row, _: bool(row["buy"]),
-        lambda row, _: bool(row["sell"]),
-        initial_cash=100.0,
+        frame, None, lambda row, _: bool(row["buy"]),
+        lambda row, _: bool(row["sell"]), initial_cash=100.0,
     )
     assert result.summary.buys == 1
     assert result.summary.roi_percent == 100.0
-    assert list(result.trades["액션"]) == ["BUY", "SELL"]
+    assert result.summary.sells == 1
+    assert result.summary.liquidations == 0
+    assert result.summary.completed_trades == 1
+    assert list(result.trades["Action"]) == ["BUY", "SELL"]
+
+
+def test_liquidation_is_not_a_signal_sell():
+    frame = pd.DataFrame({
+        "날짜": pd.date_range("2024-01-01", periods=2),
+        "종가": [10.0, 12.0], "buy": [True, False],
+    })
+    result = run_long_only(
+        frame, None, lambda row, _: bool(row["buy"]), lambda *_: False,
+        initial_cash=100.0,
+    )
+    assert list(result.trades["Action"]) == ["BUY", "LIQUIDATE"]
+    assert result.summary.sells == 0
+    assert result.summary.liquidations == 1
+    assert result.summary.completed_trades == 0

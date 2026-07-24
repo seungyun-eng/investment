@@ -5,6 +5,7 @@ import argparse
 from stock_research.data_loading import load_processed_with_vix
 from stock_research.parameters import load_parameters
 from stock_research.paths import load_paths
+from stock_research.reporting import generate_simulation_report
 from stock_research.simulation import (
     buy_and_hold,
     daily_dca,
@@ -22,6 +23,11 @@ def main() -> None:
     parser.add_argument("--extra-on-buy", action="store_true")
     parser.add_argument("--daily-dca-amount", type=float, default=10_000.0)
     args = parser.parse_args()
+    if args.index in (1, 2):
+        raise SystemExit(
+            "VIX parameter Index 1 and Index 2 are legacy/invalid because they "
+            "optimized VIX thresholds. Run optimize_vix.py to create a corrected index."
+        )
 
     paths = load_paths()
     parameters = load_parameters(paths.parameters, "vix")
@@ -50,9 +56,20 @@ def main() -> None:
         args.end,
         outputs,
     )
+    report = generate_simulation_report(
+        data,
+        outputs,
+        paths.results / company / "vix",
+        company=company,
+        strategy="vix",
+        parameter_index=args.index,
+        start=args.start,
+        end=args.end,
+    )
     print(f"Strategy ROI={result.summary.roi_percent:.2f}%")
     for path in saved:
         print(path)
+    print(f"Report={report}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,198 @@
+{
+  "GOOG": {
+    "company_slug": "alphabet",
+    "fiscal_year_end_month": 12
+  },
+  "BN": {
+    "company_slug": "brookfield",
+    "fiscal_year_end_month": 12
+  },
+  "OXY": {
+    "company_slug": "occidental-petroleum",
+    "fiscal_year_end_month": 12
+  },
+  "CRSP": {
+    "company_slug": "crispr-therapeutics-ag",
+    "fiscal_year_end_month": 12
+  },
+  "NVO": {
+    "company_slug": "novo-nordisk",
+    "fiscal_year_end_month": 12
+  },
+  "PATH": {
+    "company_slug": "uipath",
+    "fiscal_year_end_month": 12
+  },
+  "OKTA": {
+    "company_slug": "okta",
+    "fiscal_year_end_month": 12
+  },
+  "ILMN": {
+    "company_slug": "illumina",
+    "fiscal_year_end_month": 12
+  },
+  "TSM": {
+    "company_slug": "taiwan-semiconductor-manufacturing",
+    "fiscal_year_end_month": 12
+  },
+  "CRCL": {
+    "company_slug": "circle-internet",
+    "fiscal_year_end_month": 12
+  },
+  "NTRA": {
+    "company_slug": "natera",
+    "fiscal_year_end_month": 12
+  },
+  "META": {
+    "company_slug": "meta-platforms",
+    "fiscal_year_end_month": 12
+  },
+  "NU": {
+    "company_slug": "nu-holdings",
+    "fiscal_year_end_month": 12
+  },
+  "CPNG": {
+    "company_slug": "coupang",
+    "fiscal_year_end_month": 12
+  },
+  "CVX": {
+    "company_slug": "chevron",
+    "fiscal_year_end_month": 12
+  },
+  "PLTR": {
+    "company_slug": "palantir-technologies",
+    "fiscal_year_end_month": 12
+  },
+  "DDOG": {
+    "company_slug": "datadog",
+    "fiscal_year_end_month": 12
+  },
+  "CRWD": {
+    "company_slug": "crowdstrike",
+    "fiscal_year_end_month": 12
+  },
+  "AVGO": {
+    "company_slug": "broadcom",
+    "fiscal_year_end_month": 12
+  },
+  "UNH": {
+    "company_slug": "unitedhealth-group",
+    "fiscal_year_end_month": 12
+  },
+  "LMND": {
+    "company_slug": "lemonade",
+    "fiscal_year_end_month": 12
+  },
+  "AAPL": {
+    "company_slug": "apple",
+    "fiscal_year_end_month": 9
+  },
+  "MITK": {
+    "company_slug": "mitek-systems",
+    "fiscal_year_end_month": 12
+  },
+  "MSFT": {
+    "company_slug": "microsoft",
+    "fiscal_year_end_month": 6
+  },
+  "BBAI": {
+    "company_slug": "bigbearai-holdings",
+    "fiscal_year_end_month": 12
+  },
+  "VST": {
+    "company_slug": "vistra",
+    "fiscal_year_end_month": 12
+  },
+  "VRT": {
+    "company_slug": "vertiv-holdings",
+    "fiscal_year_end_month": 12
+  },
+  "MP": {
+    "company_slug": "mp-materials",
+    "fiscal_year_end_month": 12
+  },
+  "COST": {
+    "company_slug": "costco",
+    "fiscal_year_end_month": 8
+  },
+  "TEVA": {
+    "company_slug": "teva-pharmaceutical-industries",
+    "fiscal_year_end_month": 12
+  },
+  "TSLA": {
+    "company_slug": "tesla",
+    "fiscal_year_end_month": 12
+  },
+  "U": {
+    "company_slug": "unity-software",
+    "fiscal_year_end_month": 12
+  },
+  "RDDT": {
+    "company_slug": "reddit",
+    "fiscal_year_end_month": 12
+  },
+  "SNOW": {
+    "company_slug": "snowflake",
+    "fiscal_year_end_month": 1
+  },
+  "RKLB": {
+    "company_slug": "rocket-lab",
+    "fiscal_year_end_month": 12
+  },
+  "MELI": {
+    "company_slug": "mercadolibre",
+    "fiscal_year_end_month": 12
+  },
+  "EH": {
+    "company_slug": "ehang-holdings",
+    "fiscal_year_end_month": 12
+  },
+  "GRAL": {
+    "company_slug": "grail",
+    "fiscal_year_end_month": 12
+  },
+  "PLUG": {
+    "company_slug": "plug-power",
+    "fiscal_year_end_month": 12
+  },
+  "SE": {
+    "company_slug": "sea",
+    "fiscal_year_end_month": 12
+  },
+  "TEM": {
+    "company_slug": "tempus-ai",
+    "fiscal_year_end_month": 12
+  },
+  "IREN": {
+    "company_slug": "iren",
+    "fiscal_year_end_month": 12
+  },
+  "PI": {
+    "company_slug": "impinj",
+    "fiscal_year_end_month": 12
+  },
+  "JOBY": {
+    "company_slug": "joby-aviation",
+    "fiscal_year_end_month": 12
+  },
+  "APP": {
+    "company_slug": "applovin",
+    "fiscal_year_end_month": 12
+  },
+  "COIN": {
+    "company_slug": "coinbase-global",
+    "fiscal_year_end_month": 12
+  },
+  "BTC-USD": {
+    "company_slug": "bitcoin",
+    "fiscal_year_end_month": 12
+  },
+  "XRP-USD": {
+    "company_slug": "xrp",
+    "fiscal_year_end_month": 12
+  },
+  "NVDA": {
+    "company_slug": "nvidia",
+    "fiscal_year_end_month": 1
+  }
+}

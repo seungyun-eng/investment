@@ -1,0 +1,21 @@
+{
+  "initial_capital": 100000.0,
+  "vix_lookback_years": 5,
+  "warning_lookback_days": 10,
+  "drawdown_lookback_days": 252,
+  "reversal_lookback_days": 20,
+  "recovery_sma_days": 200,
+  "exit_vix_quantile": 0.50,
+  "exit_confirmation_days": 5,
+  "vix_decline_from_peak": 0.20,
+  "minimum_trade_fraction": 0.02,
+  "transaction_cost_bps": 5.0,
+  "slippage_bps": 5.0,
+  "fallback_cash_annual_rate": 0.0,
+  "training_years": 10,
+  "first_test_year": 2003,
+  "minimum_vix_observations": 500,
+  "minimum_cagr_fraction_of_buy_hold": 0.90,
+  "maximum_mdd_fraction_of_buy_hold": 0.85,
+  "static_benchmark_weight": 0.70
+}

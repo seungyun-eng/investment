@@ -1,0 +1,9 @@
+{
+  "vix_lookback_years": [3, 5, 10],
+  "core_weight": [0.50, 0.60, 0.70],
+  "warning_score_min": [2, 3],
+  "warning_addition": [0.00, 0.10],
+  "vix_entry_quantile": [0.85, 0.90, 0.95],
+  "exit_vix_quantile": [0.40, 0.50, 0.60],
+  "minimum_hold_days": [20, 60, 126]
+}

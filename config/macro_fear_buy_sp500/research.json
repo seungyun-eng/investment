@@ -1,0 +1,42 @@
+{
+  "strategy": {
+    "core_weight": 0.70,
+    "tranche_weight": 0.10,
+    "vix_lookback_days": 1260,
+    "percentile_min_history_days": 252,
+    "mild_vix_percentile": 0.80,
+    "fear_vix_percentile": 0.90,
+    "panic_vix_percentile": 0.97,
+    "mild_fear_score": 0.55,
+    "fear_fear_score": 0.65,
+    "panic_fear_score": 0.75,
+    "mild_drawdown": -0.08,
+    "fear_drawdown": -0.15,
+    "panic_drawdown": -0.25,
+    "trim_euphoria_score": 0.55,
+    "trim_max_fear_score": 0.45,
+    "trim_max_vix_percentile": 0.60,
+    "minimum_hold_sessions": 126,
+    "trim_profit_buffer": 0.02,
+    "rebalance_band": 0.025,
+    "decision_frequency": "W-FRI",
+    "vix_weight": 0.30,
+    "macro_weight": 0.20,
+    "model_risk_weight": 0.20,
+    "drawdown_weight": 0.20,
+    "downside_momentum_weight": 0.10
+  },
+  "research": {
+    "initial_capital": 100000.0,
+    "transaction_cost_bps": 5.0,
+    "slippage_bps": 5.0,
+    "development_end": "2016-12-30",
+    "holdout_start": "2017-01-03",
+    "optimization_core_weights": [0.65, 0.70, 0.75, 0.80],
+    "optimization_mild_scores": [0.50, 0.55, 0.60],
+    "optimization_fear_scores": [0.60, 0.65, 0.70],
+    "optimization_euphoria_scores": [0.50, 0.55, 0.60],
+    "optimization_hold_sessions": [63, 126, 189],
+    "optimization_profit_buffers": [0.02, 0.05]
+  }
+}

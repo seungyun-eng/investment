@@ -1,0 +1,22 @@
+{
+  "train_start": "2020-01-01",
+  "train_end": "2024-12-31",
+  "validation_periods": {
+    "2025": ["2025-01-01", "2025-12-31"],
+    "2026": ["2026-01-01", "2026-12-31"]
+  },
+  "candidate_count": 400,
+  "seed": 20260727,
+  "initial_capital": 100000.0,
+  "transaction_cost_bps": 10.0,
+  "financial_release_lag_days": 45,
+  "max_financial_age_days": 180,
+  "minimum_price_history_sessions": 200,
+  "minimum_cross_section_size": 8,
+  "rebalance_weekday": 4,
+  "training_folds": [
+    ["2020-01-01", "2021-12-31"],
+    ["2022-01-01", "2022-12-31"],
+    ["2023-01-01", "2024-12-31"]
+  ]
+}

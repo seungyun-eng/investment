@@ -17,6 +17,11 @@ from stock_research.cross_sectional.portfolio import run_portfolio_backtest
 from stock_research.cross_sectional.signals import (
     generate_rebalance_targets,
     score_panel,
+    signal_day_panel,
+)
+from stock_research.cross_sectional.v6_reporting import (
+    build_position_ledger,
+    frozen_v6_variants,
 )
 
 
@@ -273,6 +278,50 @@ def test_exit_rank_band_retains_existing_holding() -> None:
     assert not bool(second.loc["B", "ModelSelected"])
 
 
+def test_signal_day_prefers_complete_cross_section_over_later_date() -> None:
+    panel = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(
+                [
+                    "2026-07-23",
+                    "2026-07-23",
+                    "2026-07-23",
+                    "2026-07-24",
+                    "2026-07-24",
+                    "2026-07-27",
+                    "2026-07-27",
+                    "2026-07-27",
+                    "2026-07-28",
+                    "2026-07-28",
+                ]
+            ),
+            "Ticker": [
+                "A",
+                "B",
+                "C",
+                "A",
+                "B",
+                "A",
+                "B",
+                "C",
+                "A",
+                "B",
+            ],
+        }
+    )
+
+    result = signal_day_panel(
+        panel,
+        "2026-07-20",
+        "2026-07-31",
+    )
+
+    assert list(result["Date"].drop_duplicates()) == [
+        pd.Timestamp("2026-07-23"),
+        pd.Timestamp("2026-07-27"),
+    ]
+
+
 def test_compact_targets_match_full_target_weights() -> None:
     panel = pd.DataFrame(
         {
@@ -412,6 +461,260 @@ def test_loss_aware_exit_allows_profitable_rotation() -> None:
 
     assert sold["TradeAction"] == "SELL"
     assert sold["ExitReason"] == "PROFITABLE_ROTATION"
+
+
+def test_v6_winner_retention_requires_wider_rank_and_confirmation() -> None:
+    params = StrategyParams(
+        momentum_weight=1.0,
+        trend_weight=0.0,
+        growth_weight=0.0,
+        quality_weight=0.0,
+        risk_control_weight=0.0,
+        top_k=1,
+        exit_rank=2,
+        trend_floor=-1.0,
+        momentum_floor=-1.0,
+        loss_aware_exit_enabled=True,
+        conviction_exit_rank=5,
+        profit_rotation_exit_rank=3,
+        profit_rotation_confirmation_rebalances=2,
+    )
+    scored = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(
+                ["2025-01-03"] * 4
+                + ["2025-01-10"] * 4
+                + ["2025-01-17"] * 4
+            ),
+            "Ticker": ["A", "B", "C", "D"] * 3,
+            "Qualified": True,
+            "Rank": [1, 2, 3, 4, 4, 1, 2, 3, 4, 1, 2, 3],
+            "AlphaScore": [0.4, 0.3, 0.2, 0.1] * 3,
+            "Close": [100, 100, 100, 100, 110, 100, 100, 100, 112, 100, 100, 100],
+            "Trend200": 0.1,
+            "Return126": 0.1,
+        }
+    )
+    targets = generate_rebalance_targets(scored, params)
+    first_warning = targets.loc[
+        targets["Date"].eq("2025-01-10")
+        & targets["Ticker"].eq("A")
+    ].iloc[0]
+    confirmed = targets.loc[
+        targets["Date"].eq("2025-01-17")
+        & targets["Ticker"].eq("A")
+    ].iloc[0]
+
+    assert first_warning["TradeAction"] == "HOLD"
+    assert first_warning["ProfitExitStreak"] == 1
+    assert confirmed["TradeAction"] == "SELL"
+    assert confirmed["ExitReason"] == "PROFITABLE_ROTATION"
+
+
+def test_v6_replacement_hurdle_blocks_small_score_advantage() -> None:
+    params = StrategyParams(
+        momentum_weight=1.0,
+        trend_weight=0.0,
+        growth_weight=0.0,
+        quality_weight=0.0,
+        risk_control_weight=0.0,
+        top_k=1,
+        exit_rank=2,
+        trend_floor=-1.0,
+        momentum_floor=-1.0,
+        loss_aware_exit_enabled=True,
+        conviction_exit_rank=5,
+        replacement_score_advantage=0.05,
+    )
+    scored = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(
+                ["2025-01-03"] * 3
+                + ["2025-01-10"] * 3
+                + ["2025-01-17"] * 3
+            ),
+            "Ticker": ["A", "B", "C"] * 3,
+            "Qualified": True,
+            "Rank": [1, 2, 3, 3, 1, 2, 3, 1, 2],
+            "AlphaScore": [
+                0.30,
+                0.20,
+                0.10,
+                0.10,
+                0.14,
+                0.12,
+                0.10,
+                0.20,
+                0.12,
+            ],
+            "Close": [100, 100, 100, 110, 100, 100, 112, 100, 100],
+            "Trend200": 0.1,
+            "Return126": 0.1,
+        }
+    )
+    targets = generate_rebalance_targets(scored, params)
+    blocked = targets.loc[
+        targets["Date"].eq("2025-01-10")
+        & targets["Ticker"].eq("A")
+    ].iloc[0]
+    allowed = targets.loc[
+        targets["Date"].eq("2025-01-17")
+        & targets["Ticker"].eq("A")
+    ].iloc[0]
+
+    assert blocked["TradeAction"] == "HOLD"
+    assert blocked["ReplacementScoreAdvantage"] == pytest.approx(0.04)
+    assert allowed["TradeAction"] == "SELL"
+    assert allowed["ReplacementScoreAdvantage"] == pytest.approx(0.10)
+
+
+def test_v6_overheated_entry_guard_skips_top_ranked_candidate() -> None:
+    params = StrategyParams(
+        momentum_weight=1.0,
+        trend_weight=0.0,
+        growth_weight=0.0,
+        quality_weight=0.0,
+        risk_control_weight=0.0,
+        top_k=1,
+        exit_rank=2,
+        trend_floor=-1.0,
+        momentum_floor=-1.0,
+        overheated_entry_enabled=True,
+        overheated_return126=1.0,
+        overheated_trend200=0.50,
+        overheated_drawdown126_floor=-0.03,
+    )
+    panel = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(["2025-01-03"] * 2),
+            "Ticker": ["A", "B"],
+            "Eligible": True,
+            "Close": [200.0, 100.0],
+            "Trend200": [0.60, 0.20],
+            "Return126": [1.20, 0.30],
+            "Drawdown126": [-0.01, -0.10],
+            "MomentumFactor": [0.5, 0.3],
+            "TrendFactor": 0.0,
+            "GrowthFactor": 0.0,
+            "QualityFactor": 0.0,
+            "RiskControlFactor": 0.0,
+        }
+    )
+    scored = score_panel(panel, params)
+    targets = generate_rebalance_targets(scored, params)
+    selected = targets.loc[targets["ModelSelected"]]
+    blocked = targets.loc[targets["Ticker"].eq("A")].iloc[0]
+
+    assert selected["Ticker"].tolist() == ["B"]
+    assert bool(blocked["EntryBlocked"])
+    assert blocked["EntryBlockReason"] == "OVERHEATED_ENTRY"
+
+
+def test_v6_trailing_stop_uses_peak_after_activation() -> None:
+    params = StrategyParams(
+        momentum_weight=1.0,
+        trend_weight=0.0,
+        growth_weight=0.0,
+        quality_weight=0.0,
+        risk_control_weight=0.0,
+        top_k=1,
+        exit_rank=2,
+        trend_floor=-1.0,
+        momentum_floor=-1.0,
+        loss_aware_exit_enabled=True,
+        conviction_exit_rank=3,
+        trailing_stop_enabled=True,
+        trailing_stop_activation_gain=0.20,
+        trailing_stop_drawdown=-0.15,
+    )
+    scored = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(
+                ["2025-01-03"] * 2
+                + ["2025-01-10"] * 2
+                + ["2025-01-17"] * 2
+            ),
+            "Ticker": ["A", "B"] * 3,
+            "Qualified": True,
+            "Rank": [1, 2, 1, 2, 1, 2],
+            "AlphaScore": [0.3, 0.2] * 3,
+            "Close": [100, 100, 130, 100, 110, 100],
+            "Trend200": 0.1,
+            "Return126": 0.1,
+        }
+    )
+    targets = generate_rebalance_targets(scored, params)
+    sold = targets.loc[
+        targets["Date"].eq("2025-01-17")
+        & targets["Ticker"].eq("A")
+    ].iloc[0]
+
+    assert sold["TradeAction"] == "SELL"
+    assert sold["ExitReason"] == "TRAILING_STOP"
+    assert sold["PeakReferenceReturn"] == pytest.approx(0.30)
+    assert sold["TrailingDrawdown"] == pytest.approx(110 / 130 - 1)
+
+
+def test_v6_frozen_ablation_preserves_v5_factor_weights() -> None:
+    base = _params()
+    variants = frozen_v6_variants(base)
+
+    assert list(variants) == [
+        "V5",
+        "V6-A",
+        "V6-B",
+        "V6-C",
+        "V6-D",
+        "V6-BC",
+        "V6-ALL",
+    ]
+    assert all(
+        params.factor_weights == base.factor_weights
+        for params in variants.values()
+    )
+    assert variants["V6-A"].profit_rotation_exit_rank == 10
+    assert variants["V6-B"].replacement_score_advantage == pytest.approx(0.05)
+    assert variants["V6-C"].overheated_entry_enabled
+    assert variants["V6-D"].hard_stop_return == pytest.approx(-0.20)
+    assert variants["V6-BC"].replacement_score_advantage == pytest.approx(0.05)
+    assert variants["V6-BC"].overheated_entry_enabled
+    assert variants["V6-ALL"].trailing_stop_enabled
+
+
+def test_v6_position_ledger_uses_next_open_execution() -> None:
+    panel = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(
+                ["2025-01-02", "2025-01-03", "2025-01-06"]
+            ),
+            "Ticker": ["A", "A", "A"],
+            "Open": [10.0, 11.0, 12.0],
+            "Close": [10.5, 11.5, 12.5],
+        }
+    )
+    targets = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(["2025-01-02", "2025-01-03"]),
+            "Ticker": ["A", "A"],
+            "TradeAction": ["BUY", "SELL"],
+            "Rank": [1.0, 3.0],
+            "AlphaScore": [0.3, 0.1],
+            "ExitReason": [None, "PROFITABLE_ROTATION"],
+        }
+    )
+    ledger = build_position_ledger(
+        panel,
+        targets,
+        variant="V5",
+        latest_date=pd.Timestamp("2025-01-06"),
+    )
+    position = ledger.iloc[0]
+
+    assert position["EntryExecutionDate"] == pd.Timestamp("2025-01-03")
+    assert position["EntryExecutionPrice"] == pytest.approx(11.0)
+    assert position["ExitExecutionDate"] == pd.Timestamp("2025-01-06")
+    assert position["ExitExecutionPrice"] == pytest.approx(12.0)
+    assert position["ExecutionPriceReturn"] == pytest.approx(12 / 11 - 1)
 
 
 def test_portfolio_executes_signal_at_next_open_and_uses_net_roi() -> None:

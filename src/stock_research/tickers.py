@@ -10,9 +10,12 @@ class TickerConfig:
     ticker: str
     company_slug: str
     fiscal_year_end_month: int
+    display_name_override: str | None = None
 
     @property
     def display_name(self) -> str:
+        if self.display_name_override:
+            return self.display_name_override
         return self.company_slug.replace("-", " ").title()
 
 
@@ -25,5 +28,6 @@ def load_tickers(config_path: str | Path) -> dict[str, TickerConfig]:
             ticker=ticker.upper(),
             company_slug=details["company_slug"],
             fiscal_year_end_month=int(details.get("fiscal_year_end_month", 12)),
+            display_name_override=details.get("display_name"),
         )
     return result

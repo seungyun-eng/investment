@@ -30,6 +30,16 @@ class ResearchSettings:
     conviction_momentum_floor: float = -0.20
     hard_stop_return: float = -0.35
     minimum_hold_rebalances: int = 4
+    profit_rotation_exit_rank: int | None = None
+    profit_rotation_confirmation_rebalances: int = 1
+    replacement_score_advantage: float = 0.0
+    overheated_entry_enabled: bool = False
+    overheated_return126: float = 1.0
+    overheated_trend200: float = 0.50
+    overheated_drawdown126_floor: float = -0.03
+    trailing_stop_enabled: bool = False
+    trailing_stop_activation_gain: float = 0.20
+    trailing_stop_drawdown: float = -0.15
     dcf_wacc: float = 0.10
     dcf_cost_of_equity: float = 0.10
     dcf_short_growth: float = 0.05
@@ -68,6 +78,35 @@ class ResearchSettings:
             raise ValueError("hard_stop_return must be between -1 and zero")
         if self.minimum_hold_rebalances < 1:
             raise ValueError("minimum_hold_rebalances must be positive")
+        if (
+            self.profit_rotation_exit_rank is not None
+            and self.profit_rotation_exit_rank < 1
+        ):
+            raise ValueError("profit_rotation_exit_rank must be positive")
+        if self.profit_rotation_confirmation_rebalances < 1:
+            raise ValueError(
+                "profit_rotation_confirmation_rebalances must be positive"
+            )
+        if self.replacement_score_advantage < 0:
+            raise ValueError(
+                "replacement_score_advantage must be non-negative"
+            )
+        if self.overheated_return126 <= 0:
+            raise ValueError("overheated_return126 must be positive")
+        if self.overheated_trend200 <= 0:
+            raise ValueError("overheated_trend200 must be positive")
+        if not -1 < self.overheated_drawdown126_floor <= 0:
+            raise ValueError(
+                "overheated_drawdown126_floor must be in (-1, 0]"
+            )
+        if self.trailing_stop_activation_gain <= 0:
+            raise ValueError(
+                "trailing_stop_activation_gain must be positive"
+            )
+        if not -1 < self.trailing_stop_drawdown < 0:
+            raise ValueError(
+                "trailing_stop_drawdown must be between -1 and zero"
+            )
         if self.dcf_wacc <= self.dcf_terminal_growth:
             raise ValueError("dcf_wacc must exceed dcf_terminal_growth")
         if self.dcf_cost_of_equity <= self.dcf_terminal_growth:
@@ -112,6 +151,16 @@ class StrategyParams:
     conviction_momentum_floor: float = -0.20
     hard_stop_return: float = -0.35
     minimum_hold_rebalances: int = 4
+    profit_rotation_exit_rank: int | None = None
+    profit_rotation_confirmation_rebalances: int = 1
+    replacement_score_advantage: float = 0.0
+    overheated_entry_enabled: bool = False
+    overheated_return126: float = 1.0
+    overheated_trend200: float = 0.50
+    overheated_drawdown126_floor: float = -0.03
+    trailing_stop_enabled: bool = False
+    trailing_stop_activation_gain: float = 0.20
+    trailing_stop_drawdown: float = -0.15
 
     def __post_init__(self) -> None:
         weights = self.factor_weights
@@ -137,6 +186,37 @@ class StrategyParams:
             raise ValueError("hard_stop_return must be between -1 and zero")
         if self.minimum_hold_rebalances < 1:
             raise ValueError("minimum_hold_rebalances must be positive")
+        if (
+            self.profit_rotation_exit_rank is not None
+            and self.profit_rotation_exit_rank < self.exit_rank
+        ):
+            raise ValueError(
+                "profit_rotation_exit_rank must be at least exit_rank"
+            )
+        if self.profit_rotation_confirmation_rebalances < 1:
+            raise ValueError(
+                "profit_rotation_confirmation_rebalances must be positive"
+            )
+        if self.replacement_score_advantage < 0:
+            raise ValueError(
+                "replacement_score_advantage must be non-negative"
+            )
+        if self.overheated_return126 <= 0:
+            raise ValueError("overheated_return126 must be positive")
+        if self.overheated_trend200 <= 0:
+            raise ValueError("overheated_trend200 must be positive")
+        if not -1 < self.overheated_drawdown126_floor <= 0:
+            raise ValueError(
+                "overheated_drawdown126_floor must be in (-1, 0]"
+            )
+        if self.trailing_stop_activation_gain <= 0:
+            raise ValueError(
+                "trailing_stop_activation_gain must be positive"
+            )
+        if not -1 < self.trailing_stop_drawdown < 0:
+            raise ValueError(
+                "trailing_stop_drawdown must be between -1 and zero"
+            )
 
     @property
     def factor_weights(self) -> dict[str, float]:
@@ -183,6 +263,41 @@ class StrategyParams:
             hard_stop_return=float(values.get("hard_stop_return", -0.35)),
             minimum_hold_rebalances=int(
                 values.get("minimum_hold_rebalances", 4)
+            ),
+            profit_rotation_exit_rank=(
+                int(values["profit_rotation_exit_rank"])
+                if values.get("profit_rotation_exit_rank") is not None
+                else None
+            ),
+            profit_rotation_confirmation_rebalances=int(
+                values.get(
+                    "profit_rotation_confirmation_rebalances",
+                    1,
+                )
+            ),
+            replacement_score_advantage=float(
+                values.get("replacement_score_advantage", 0.0)
+            ),
+            overheated_entry_enabled=bool(
+                values.get("overheated_entry_enabled", False)
+            ),
+            overheated_return126=float(
+                values.get("overheated_return126", 1.0)
+            ),
+            overheated_trend200=float(
+                values.get("overheated_trend200", 0.50)
+            ),
+            overheated_drawdown126_floor=float(
+                values.get("overheated_drawdown126_floor", -0.03)
+            ),
+            trailing_stop_enabled=bool(
+                values.get("trailing_stop_enabled", False)
+            ),
+            trailing_stop_activation_gain=float(
+                values.get("trailing_stop_activation_gain", 0.20)
+            ),
+            trailing_stop_drawdown=float(
+                values.get("trailing_stop_drawdown", -0.15)
             ),
         )
 
@@ -253,6 +368,38 @@ def settings_from_dict(raw: dict[str, object]) -> ResearchSettings:
         hard_stop_return=float(raw.get("hard_stop_return", -0.35)),
         minimum_hold_rebalances=int(
             raw.get("minimum_hold_rebalances", 4)
+        ),
+        profit_rotation_exit_rank=(
+            int(raw["profit_rotation_exit_rank"])
+            if raw.get("profit_rotation_exit_rank") is not None
+            else None
+        ),
+        profit_rotation_confirmation_rebalances=int(
+            raw.get("profit_rotation_confirmation_rebalances", 1)
+        ),
+        replacement_score_advantage=float(
+            raw.get("replacement_score_advantage", 0.0)
+        ),
+        overheated_entry_enabled=bool(
+            raw.get("overheated_entry_enabled", False)
+        ),
+        overheated_return126=float(
+            raw.get("overheated_return126", 1.0)
+        ),
+        overheated_trend200=float(
+            raw.get("overheated_trend200", 0.50)
+        ),
+        overheated_drawdown126_floor=float(
+            raw.get("overheated_drawdown126_floor", -0.03)
+        ),
+        trailing_stop_enabled=bool(
+            raw.get("trailing_stop_enabled", False)
+        ),
+        trailing_stop_activation_gain=float(
+            raw.get("trailing_stop_activation_gain", 0.20)
+        ),
+        trailing_stop_drawdown=float(
+            raw.get("trailing_stop_drawdown", -0.15)
         ),
         dcf_wacc=float(raw.get("dcf_wacc", 0.10)),
         dcf_cost_of_equity=float(raw.get("dcf_cost_of_equity", 0.10)),

@@ -477,6 +477,25 @@ def _apply_exit_policy(
         conviction_momentum_floor=settings.conviction_momentum_floor,
         hard_stop_return=settings.hard_stop_return,
         minimum_hold_rebalances=settings.minimum_hold_rebalances,
+        profit_rotation_exit_rank=max(
+            settings.profit_rotation_exit_rank or params.exit_rank,
+            params.exit_rank,
+        ),
+        profit_rotation_confirmation_rebalances=(
+            settings.profit_rotation_confirmation_rebalances
+        ),
+        replacement_score_advantage=settings.replacement_score_advantage,
+        overheated_entry_enabled=settings.overheated_entry_enabled,
+        overheated_return126=settings.overheated_return126,
+        overheated_trend200=settings.overheated_trend200,
+        overheated_drawdown126_floor=(
+            settings.overheated_drawdown126_floor
+        ),
+        trailing_stop_enabled=settings.trailing_stop_enabled,
+        trailing_stop_activation_gain=(
+            settings.trailing_stop_activation_gain
+        ),
+        trailing_stop_drawdown=settings.trailing_stop_drawdown,
     )
 
 

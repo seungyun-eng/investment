@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from .io_utils import atomic_to_csv, read_csv_fallback
-
 
 COLUMN_ALIASES = {
     "date": "날짜",
@@ -149,26 +147,37 @@ def add_indicators(df: pd.DataFrame, *, drop_warmup: bool = False) -> pd.DataFra
     return out
 
 
+def preprocess_company_dir(
+    company_dir: Path,
+    output_root: Path,
+) -> Path | None:
+    frames: list[pd.DataFrame] = []
+    for csv_path in sorted(company_dir.glob("*.csv")):
+        try:
+            frames.append(
+                normalize_price_columns(read_csv_fallback(csv_path))
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"SKIP {csv_path.name}: {exc}")
+    if not frames:
+        return None
+    combined = (
+        pd.concat(frames, ignore_index=True)
+        .sort_values("날짜")
+        .drop_duplicates("날짜", keep="last")
+        .reset_index(drop=True)
+    )
+    processed = add_indicators(combined, drop_warmup=False)
+    output = output_root / f"{company_dir.name}_지표포함.csv"
+    atomic_to_csv(processed, output, index=False)
+    return output
+
+
 def preprocess_folder(raw_root: Path, output_root: Path) -> list[Path]:
     output_root.mkdir(parents=True, exist_ok=True)
     outputs: list[Path] = []
     for company_dir in sorted(p for p in raw_root.iterdir() if p.is_dir()):
-        frames: list[pd.DataFrame] = []
-        for csv_path in sorted(company_dir.glob("*.csv")):
-            try:
-                frames.append(normalize_price_columns(read_csv_fallback(csv_path)))
-            except Exception as exc:
-                print(f"SKIP {csv_path.name}: {exc}")
-        if not frames:
-            continue
-        combined = (
-            pd.concat(frames, ignore_index=True)
-            .sort_values("날짜")
-            .drop_duplicates("날짜", keep="last")
-            .reset_index(drop=True)
-        )
-        processed = add_indicators(combined, drop_warmup=False)
-        output = output_root / f"{company_dir.name}_지표포함.csv"
-        atomic_to_csv(processed, output, index=False)
-        outputs.append(output)
+        output = preprocess_company_dir(company_dir, output_root)
+        if output is not None:
+            outputs.append(output)
     return outputs

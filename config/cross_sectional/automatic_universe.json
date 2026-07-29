@@ -1,0 +1,12 @@
+{
+  "target_size": 200,
+  "minimum_price": 5.0,
+  "minimum_market_cap": 1000000000.0,
+  "minimum_dollar_volume": 10000000.0,
+  "minimum_ipo_age_years": 2,
+  "exclude_spacs": true,
+  "request_timeout_seconds": 30.0,
+  "nasdaq_listed_url": "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt",
+  "other_listed_url": "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
+  "nasdaq_screener_url": "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=10000&offset=0&download=true"
+}

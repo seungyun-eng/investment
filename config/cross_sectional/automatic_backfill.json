@@ -1,0 +1,16 @@
+{
+  "initial_price_start": "2018-01-01",
+  "price_transport": "yahoo_chart",
+  "minimum_price_rows": 252,
+  "maximum_price_age_days": 10,
+  "minimum_financial_periods": 8,
+  "financial_frequency": "Q",
+  "financial_transport": "http",
+  "price_request_pause_seconds": 0.25,
+  "request_pause_seconds": 2.0,
+  "ticker_pause_seconds": 10.0,
+  "checkpoint_interval": 25,
+  "retries": 2,
+  "retry_backoff_seconds": 15.0,
+  "request_timeout_seconds": 30.0
+}

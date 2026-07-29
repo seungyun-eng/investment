@@ -56,3 +56,57 @@ $env:PYTHONPATH = "src"
 python scripts/cross_sectional/run_research.py `
   --config config/cross_sectional/research_loss_protected_v5.json
 ```
+
+동결된 최신 V5 실행을 사용해 주가·완전 진입/청산·신호 강도 HTML/PDF와
+상세 CSV를 만드는 명령은 별도다. 이 명령은 재학습하지 않는다.
+
+```powershell
+$env:PYTHONPATH = "src"
+python scripts/cross_sectional/generate_trade_report.py
+```
+
+특정 실행을 고정하려면 해당 실행의 `selected_strategy.json`을 지정한다.
+
+```powershell
+$env:PYTHONPATH = "src"
+python scripts/cross_sectional/generate_trade_report.py `
+  --strategy "<selected_strategy.json 경로>"
+```
+
+V6 규칙은 V5를 덮어쓰지 않고 네 개 설정으로 각각 실행한다.
+
+```powershell
+$env:PYTHONPATH = "src"
+python scripts/cross_sectional/run_research.py `
+  --config config/cross_sectional/research_v6_a_winner_retention.json
+python scripts/cross_sectional/run_research.py `
+  --config config/cross_sectional/research_v6_b_replacement_hurdle.json
+python scripts/cross_sectional/run_research.py `
+  --config config/cross_sectional/research_v6_c_overheat_guard.json
+python scripts/cross_sectional/run_research.py `
+  --config config/cross_sectional/research_v6_d_risk_overlay.json
+```
+
+V6 추가 진단 열은 다음과 같다.
+
+- `ProfitExitStreak`: 수익 순환매 조건이 연속으로 확인된 횟수
+- `BestReplacementAlphaScore`, `ReplacementScoreAdvantage`: 기존 종목과
+  최상위 신규 후보의 점수 차이
+- `EntryBlocked`, `EntryBlockReason`: 과열 신규 진입 차단 여부와 이유
+- `PeakReferenceReturn`, `TrailingDrawdown`: 추적 손절의 최고수익과
+  신호일 고점 대비 낙폭
+
+V6는 2025–2026년 사례를 본 뒤 만든 사후진단이다. 실행 결과가 좋아도
+`VALIDATED`로 해석하지 않고 2026-07-24 이후 데이터로 전진검증한다.
+
+팩터 가중치와 기본 진입필터를 V5 값으로 고정한 순수 규칙 비교 및
+인터랙티브 리밸런싱 리포트는 다음 명령으로 생성한다.
+
+```powershell
+$env:PYTHONPATH = "src"
+python scripts/cross_sectional/compare_v6_variants.py
+```
+
+이 비교는 V5, 네 개 단일 규칙, 결합형을 같은 데이터와 가중치로 실행해
+`v6_variant_summary.csv`, 자산곡선, 포지션 원장, 리밸런싱 이벤트와 HTML을
+`Results/Cross_Sectional/v6_comparison` 아래에 원자적으로 기록한다.

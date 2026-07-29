@@ -3,14 +3,15 @@ from __future__ import annotations
 import json
 import re
 import time
+from dataclasses import replace
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pandas as pd
 from bs4 import BeautifulSoup
 
 from .io_utils import atomic_to_excel
 from .tickers import TickerConfig
-
 
 STATEMENTS = {
     "Income Statement": "income-statement",
@@ -98,7 +99,11 @@ def _extract_original_data(page_source: str) -> pd.DataFrame:
     payload = None
     for script in scripts:
         text = script.string or script.get_text() or ""
-        match = re.search(r"var\s+originalData\s*=\s*(\[.*?\]);", text, re.S)
+        match = re.search(
+            r"var\s+originalData\s*=\s*(\[.*?\]);",
+            text,
+            re.DOTALL,
+        )
         if match:
             payload = match.group(1)
             break
@@ -212,6 +217,43 @@ def fetch_statement_http(
     return _extract_original_data(response.text)
 
 
+def resolve_company_slug_http(
+    session,
+    config: TickerConfig,
+    *,
+    timeout_seconds: float = 30.0,
+) -> TickerConfig:
+    """Resolve Macrotrends' canonical company slug for a ticker."""
+    url = _statement_url(config, "income-statement", "A")
+    response = session.get(
+        url,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/138.0.0.0 Safari/537.36"
+            )
+        },
+        timeout=timeout_seconds,
+    )
+    response.raise_for_status()
+    parts = [part for part in urlparse(response.url).path.split("/") if part]
+    try:
+        charts_index = parts.index("charts")
+        resolved_ticker = parts[charts_index + 1].upper()
+        resolved_slug = parts[charts_index + 2]
+    except (ValueError, IndexError) as exc:
+        raise ValueError(
+            f"Unable to resolve Macrotrends slug from {response.url}"
+        ) from exc
+    if resolved_ticker != config.ticker.upper():
+        raise ValueError(
+            f"Unexpected Macrotrends redirect for {config.ticker}: "
+            f"{response.url}"
+        )
+    return replace(config, company_slug=resolved_slug)
+
+
 def scrape_financials(
     configs: dict[str, TickerConfig],
     output_folder: Path,
@@ -266,7 +308,7 @@ def scrape_financials(
                                 wait_seconds=wait_seconds,
                             )
                         break
-                    except Exception as exc:
+                    except Exception as exc:  # noqa: BLE001
                         if attempt == retries:
                             errors.append(f"{sheet_name}: {exc}")
                         else:
@@ -298,7 +340,7 @@ def scrape_financials(
                 latest = min(_latest_statement_date(df) for df in merged.values())
                 print(f"UPDATED {ticker}: complete through {latest.date()}")
                 outputs.append(output)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 print(f"ERROR {ticker}: validation/write failed; existing file kept. {exc}")
     finally:
         if transport == "selenium":

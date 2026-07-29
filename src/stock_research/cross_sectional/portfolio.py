@@ -45,6 +45,8 @@ class PortfolioResult:
     daily: pd.DataFrame
     executions: pd.DataFrame
     summary: PortfolioSummary
+    attribution: pd.DataFrame | None = None
+    delistings: pd.DataFrame | None = None
 
 
 @dataclass(frozen=True)
@@ -96,6 +98,8 @@ def run_portfolio_backtest(
     initial_capital: float,
     transaction_cost_bps: float,
     prepared_market: PreparedMarket | None = None,
+    record_attribution: bool = False,
+    delisting_events: pd.DataFrame | None = None,
 ) -> PortfolioResult:
     """Execute close-generated targets at the next available session's open."""
 
@@ -113,15 +117,24 @@ def run_portfolio_backtest(
 
     period_targets = targets.loc[targets["Date"].between(start, end)].copy()
     execution_schedule = _execution_schedule(period_targets, dates, tickers)
+    delisting_schedule = _delisting_schedule(
+        delisting_events,
+        dates,
+        tickers,
+    )
 
     shares = np.zeros(len(tickers), dtype=float)
+    permanently_untradable = np.zeros(len(tickers), dtype=bool)
     cash = float(initial_capital)
     total_turnover = 0.0
     ticker_trades = 0
     rebalance_count = 0
     daily_records: list[dict[str, object]] = []
     execution_records: list[dict[str, object]] = []
+    attribution_records: list[dict[str, object]] = []
+    delisting_records: list[dict[str, object]] = []
     cost_rate = transaction_cost_bps / 10_000
+    previous_equity = float(initial_capital)
 
     for position, date in enumerate(dates):
         open_row = np.where(
@@ -130,8 +143,65 @@ def run_portfolio_backtest(
             open_values[position],
         )
         close_row = valuation_values[position]
+        previous_close = (
+            np.where(
+                np.isnan(valuation_values[position - 1]),
+                0.0,
+                valuation_values[position - 1],
+            )
+            if position > 0
+            else np.zeros(len(tickers), dtype=float)
+        )
+        delisting_pnl = np.zeros(len(tickers), dtype=float)
+        for ticker_index, delisting_return, source_date in (
+            delisting_schedule.get(date, [])
+        ):
+            held_shares = float(shares[ticker_index])
+            prior_price = float(previous_close[ticker_index])
+            if held_shares != 0 and prior_price <= 0:
+                raise RuntimeError(
+                    "Cannot settle a held delisted position without a valid "
+                    f"prior close: {tickers[ticker_index]} on {date.date()}"
+                )
+            settlement_price = (
+                prior_price * (1.0 + delisting_return)
+                if prior_price > 0
+                else 0.0
+            )
+            proceeds = held_shares * settlement_price
+            delisting_pnl[ticker_index] = (
+                held_shares * (settlement_price - prior_price)
+            )
+            cash += proceeds
+            shares[ticker_index] = 0.0
+            permanently_untradable[ticker_index] = True
+            delisting_records.append(
+                {
+                    "EffectiveDate": date,
+                    "SourceEffectiveDate": source_date,
+                    "Ticker": str(tickers[ticker_index]),
+                    "DelistingReturn": delisting_return,
+                    "PriorClose": prior_price,
+                    "SettlementPrice": settlement_price,
+                    "SharesSettled": held_shares,
+                    "Proceeds": proceeds,
+                    "DelistingPnL": delisting_pnl[ticker_index],
+                }
+            )
+        open_row[permanently_untradable] = np.nan
         open_for_valuation = np.where(np.isnan(open_row), 0.0, open_row)
         close_for_valuation = np.where(np.isnan(close_row), 0.0, close_row)
+        if record_attribution and position > 0:
+            overnight_pnl = shares * (
+                open_for_valuation - previous_close
+            )
+            overnight_pnl += delisting_pnl
+        else:
+            overnight_pnl = delisting_pnl.copy()
+        transaction_cost_by_ticker = np.zeros(
+            len(tickers),
+            dtype=float,
+        )
         if date in execution_schedule:
             scheduled_target = execution_schedule[date]
             target = scheduled_target.to_numpy(dtype=float, copy=True)
@@ -149,6 +219,10 @@ def run_portfolio_backtest(
             changes = desired_notional - current_notional
             turnover = float(np.abs(changes).sum())
             transaction_cost = turnover * cost_rate
+            if record_attribution and turnover > 0:
+                transaction_cost_by_ticker = (
+                    np.abs(changes) / turnover * transaction_cost
+                )
             net_equity = max(pre_trade_equity - transaction_cost, 0.0)
             desired_after_cost = target * net_equity
             changed = np.abs(changes) > max(pre_trade_equity, 1.0) * 1e-8
@@ -173,6 +247,47 @@ def run_portfolio_backtest(
                 }
             )
         equity = cash + float(np.sum(shares * close_for_valuation))
+        if record_attribution:
+            intraday_pnl = shares * (
+                close_for_valuation - open_for_valuation
+            )
+            gross_price_pnl = overnight_pnl + intraday_pnl
+            net_pnl = gross_price_pnl - transaction_cost_by_ticker
+            expected_pnl = equity - previous_equity
+            reconciliation_error = expected_pnl - float(net_pnl.sum())
+            tolerance = 1e-8 * max(abs(equity), 1.0)
+            if abs(reconciliation_error) > tolerance:
+                raise RuntimeError(
+                    "Ticker attribution does not reconcile to portfolio "
+                    f"equity on {date.date()}: {reconciliation_error}"
+                )
+            ending_notional = shares * close_for_valuation
+            active = (
+                (np.abs(gross_price_pnl) > 1e-12)
+                | (transaction_cost_by_ticker > 1e-12)
+                | (np.abs(ending_notional) > 1e-12)
+            )
+            for ticker_index in np.flatnonzero(active):
+                attribution_records.append(
+                    {
+                        "Date": date,
+                        "Ticker": str(tickers[ticker_index]),
+                        "OvernightPnL": overnight_pnl[ticker_index],
+                        "IntradayPnL": intraday_pnl[ticker_index],
+                        "GrossPricePnL": gross_price_pnl[ticker_index],
+                        "DelistingPnL": delisting_pnl[ticker_index],
+                        "TransactionCost": (
+                            transaction_cost_by_ticker[ticker_index]
+                        ),
+                        "NetPnL": net_pnl[ticker_index],
+                        "EndingNotional": ending_notional[ticker_index],
+                        "EndingWeight": (
+                            ending_notional[ticker_index] / equity
+                            if equity > 0
+                            else 0.0
+                        ),
+                    }
+                )
         daily_records.append(
             {
                 "Date": date,
@@ -186,6 +301,7 @@ def run_portfolio_backtest(
                 "SelectedCount": int((shares > 0).sum()),
             }
         )
+        previous_equity = equity
 
     daily = pd.DataFrame(daily_records)
     summary = _summarize(
@@ -199,6 +315,39 @@ def run_portfolio_backtest(
         daily=daily,
         executions=pd.DataFrame(execution_records),
         summary=summary,
+        attribution=(
+            pd.DataFrame(
+                attribution_records,
+                columns=[
+                    "Date",
+                    "Ticker",
+                    "OvernightPnL",
+                    "IntradayPnL",
+                    "GrossPricePnL",
+                    "DelistingPnL",
+                    "TransactionCost",
+                    "NetPnL",
+                    "EndingNotional",
+                    "EndingWeight",
+                ],
+            )
+            if record_attribution
+            else None
+        ),
+        delistings=pd.DataFrame(
+            delisting_records,
+            columns=[
+                "EffectiveDate",
+                "SourceEffectiveDate",
+                "Ticker",
+                "DelistingReturn",
+                "PriorClose",
+                "SettlementPrice",
+                "SharesSettled",
+                "Proceeds",
+                "DelistingPnL",
+            ],
+        ),
     )
 
 
@@ -222,6 +371,67 @@ def _execution_schedule(
         )
         weights.attrs["SignalDate"] = signal_date
         schedule[execution_date] = weights
+    return schedule
+
+
+def _delisting_schedule(
+    events: pd.DataFrame | None,
+    dates: pd.DatetimeIndex,
+    tickers: pd.Index,
+) -> dict[pd.Timestamp, list[tuple[int, float, pd.Timestamp]]]:
+    if events is None or events.empty:
+        return {}
+    required = {"Ticker", "EffectiveDate", "DelistingReturn"}
+    missing = sorted(required - set(events.columns))
+    if missing:
+        raise ValueError(
+            f"Delisting events are missing required columns: {missing}"
+        )
+    frame = events.loc[:, sorted(required)].copy()
+    frame["Ticker"] = frame["Ticker"].astype(str)
+    frame["EffectiveDate"] = pd.to_datetime(
+        frame["EffectiveDate"],
+        errors="raise",
+    )
+    frame["DelistingReturn"] = pd.to_numeric(
+        frame["DelistingReturn"],
+        errors="raise",
+    )
+    if frame.duplicated(["Ticker", "EffectiveDate"]).any():
+        raise ValueError("Duplicate ticker/effective-date delisting event")
+    invalid_return = (
+        ~np.isfinite(frame["DelistingReturn"])
+        | frame["DelistingReturn"].lt(-1.0)
+    )
+    if invalid_return.any():
+        raise ValueError(
+            "DelistingReturn must be finite and greater than or equal to -1"
+        )
+    ticker_positions = {
+        str(ticker): index for index, ticker in enumerate(tickers)
+    }
+    unknown = sorted(set(frame["Ticker"]) - set(ticker_positions))
+    if unknown:
+        raise ValueError(
+            f"Delisting events contain tickers absent from market: {unknown}"
+        )
+    schedule: dict[
+        pd.Timestamp,
+        list[tuple[int, float, pd.Timestamp]],
+    ] = {}
+    for row in frame.itertuples(index=False):
+        source_date = pd.Timestamp(row.EffectiveDate)
+        position = int(dates.searchsorted(source_date, side="left"))
+        if position >= len(dates):
+            continue
+        execution_date = pd.Timestamp(dates[position])
+        schedule.setdefault(execution_date, []).append(
+            (
+                ticker_positions[str(row.Ticker)],
+                float(row.DelistingReturn),
+                source_date,
+            )
+        )
     return schedule
 
 

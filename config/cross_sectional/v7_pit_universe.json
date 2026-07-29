@@ -1,0 +1,14 @@
+{
+  "snapshot_years": [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026],
+  "snapshot_month": 1,
+  "snapshot_day": 1,
+  "target_size": 100,
+  "direct_source_limit": 50,
+  "maximum_price_age_days": 10,
+  "maximum_shares_age_days": 550,
+  "request_timeout_seconds": 30.0,
+  "request_pause_seconds": 0.05,
+  "maximum_workers": 6,
+  "historical_constituents_url": "https://raw.githubusercontent.com/hanshof/sp500_constituents/main/sp_500_historical_components.csv",
+  "direct_ranking_url_template": "https://tradefomo.ai/marketcap-ranking/{year}"
+}

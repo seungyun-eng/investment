@@ -206,11 +206,17 @@ def run_portfolio_backtest(
             scheduled_target = execution_schedule[date]
             target = scheduled_target.to_numpy(dtype=float, copy=True)
             tradable = (open_row > 0) & ~np.isnan(open_row)
-            if (~tradable).any():
+            requested_target_sum = float(target.sum())
+            untradable_target = float(target[~tradable].sum())
+            if untradable_target > 0:
                 target = np.where(tradable, target, 0.0)
                 target_sum = float(target.sum())
                 if target_sum > 0:
-                    target = target / target_sum
+                    target = (
+                        target
+                        / target_sum
+                        * requested_target_sum
+                    )
             pre_trade_equity = cash + float(
                 np.sum(shares * open_for_valuation)
             )

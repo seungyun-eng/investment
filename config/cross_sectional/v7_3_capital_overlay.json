@@ -1,0 +1,14 @@
+{
+  "cash_gate_quantiles": [null, 0.25, 0.5],
+  "strong_gate_quantiles": [null, 0.75, 0.9],
+  "strong_long_gross_values": [1.25, 1.5, 2.0],
+  "short_gross_values": [0.0, 0.2, 0.4],
+  "short_score_max_values": [-0.05, -0.1],
+  "short_count": 5,
+  "max_gross": 2.0,
+  "funding_annual_rate": 0.06,
+  "short_borrow_annual_rate": 0.03,
+  "minimum_train_mdd": -60.0,
+  "minimum_positive_folds": 2,
+  "minimum_worst_fold_roi": -50.0
+}

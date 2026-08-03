@@ -249,6 +249,19 @@ def run_automatic_backfill(
             "LiquidityRank" if "LiquidityRank" in universe else "DataSymbol"
         )["DataSymbol"]
     ]
+    block_by_ticker = (
+        universe.set_index("DataSymbol")["CrawlBlockReason"]
+        .fillna("")
+        .astype(str)
+        .to_dict()
+        if "CrawlBlockReason" in universe
+        else {}
+    )
+    blocked_symbols = {
+        str(ticker).upper()
+        for ticker, reason in block_by_ticker.items()
+        if reason.strip()
+    }
     requested = (
         {ticker.upper() for ticker in selected_tickers}
         if selected_tickers
@@ -261,6 +274,11 @@ def run_automatic_backfill(
                 "Requested tickers are not in the universe: "
                 + ", ".join(sorted(missing))
             )
+        if blocked := requested & blocked_symbols:
+            raise ValueError(
+                "Requested tickers are blocked from automatic crawling: "
+                + ", ".join(sorted(blocked))
+            )
         batch = [
             ticker for ticker in ordered_symbols if ticker in requested
         ]
@@ -268,12 +286,15 @@ def run_automatic_backfill(
         batch = [
             ticker
             for ticker in ordered_symbols
-            if force
-            or not _is_v6_ready(
-                paths,
-                configs[ticker],
-                settings,
-                as_of=started_at,
+            if ticker not in blocked_symbols
+            and (
+                force
+                or not _is_v6_ready(
+                    paths,
+                    configs[ticker],
+                    settings,
+                    as_of=started_at,
+                )
             )
         ]
     if limit is not None:
@@ -287,6 +308,7 @@ def run_automatic_backfill(
         else None
     )
     run_details: dict[str, dict[str, str]] = {}
+    status: pd.DataFrame | None = None
     initial_start = datetime.fromisoformat(settings.initial_price_start)
     for batch_index, ticker in enumerate(batch, start=1):
         config = configs[ticker]
@@ -395,7 +417,7 @@ def run_automatic_backfill(
             batch_index % settings.checkpoint_interval == 0
             or batch_index == len(batch)
         ):
-            interim = _build_status(
+            status = _build_status(
                 paths,
                 universe,
                 configs,
@@ -404,22 +426,23 @@ def run_automatic_backfill(
                 run_details=run_details,
                 as_of=started_at,
             )
-            atomic_to_csv(interim, status_path, index=False)
+            atomic_to_csv(status, status_path, index=False)
         if made_price_request:
             time.sleep(settings.price_request_pause_seconds)
         if made_financial_request:
             time.sleep(settings.ticker_pause_seconds)
 
-    status = _build_status(
-        paths,
-        universe,
-        configs,
-        settings,
-        batch_set=batch_set,
-        run_details=run_details,
-        as_of=started_at,
-    )
-    atomic_to_csv(status, status_path, index=False)
+    if status is None:
+        status = _build_status(
+            paths,
+            universe,
+            configs,
+            settings,
+            batch_set=batch_set,
+            run_details=run_details,
+            as_of=started_at,
+        )
+        atomic_to_csv(status, status_path, index=False)
     _atomic_ticker_config(configs, config_path)
     completed_at = datetime.now(UTC)
     _atomic_json(
@@ -645,6 +668,10 @@ def _build_status(
         "LiquidityRank",
         pd.Series(dtype=float),
     )
+    block_by_ticker = universe.set_index("DataSymbol").get(
+        "CrawlBlockReason",
+        pd.Series(dtype=object),
+    )
     rows: list[dict[str, Any]] = []
     for ticker, config in configs.items():
         price = _price_status(
@@ -672,6 +699,7 @@ def _build_status(
                 "LiquidityRank": rank_by_ticker.get(ticker, pd.NA),
                 "Company": config.display_name,
                 "CompanySlug": config.company_slug,
+                "CrawlBlockReason": block_by_ticker.get(ticker, ""),
                 "RunSelected": ticker in batch_set,
                 **details,
                 "PriceValid": bool(price["Valid"]),

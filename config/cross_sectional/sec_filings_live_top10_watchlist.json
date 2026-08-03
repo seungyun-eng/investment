@@ -1,0 +1,11 @@
+{
+  "output_label": "live_top10_plus_watchlist",
+  "start_date": "2019-01-01",
+  "end_date": null,
+  "forms": ["10-K", "10-Q", "20-F", "40-F", "6-K"],
+  "include_amendments": false,
+  "download_primary_documents": true,
+  "request_interval_seconds": 0.2,
+  "timeout_seconds": 30.0,
+  "max_retries": 4
+}

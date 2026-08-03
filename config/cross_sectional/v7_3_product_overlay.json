@@ -1,0 +1,52 @@
+{
+  "initial_capital": 100000.0,
+  "annual_expense_ratio": 0.0095,
+  "annual_financing_spread": 0.01,
+  "transaction_cost_bps": 10.0,
+  "baseline_parity": {
+    "ROI": 461.3062635306507,
+    "CAGR": 30.0226035497551,
+    "MaxDrawdown": -32.908109029681945,
+    "Sharpe": 1.1514698505692351,
+    "tolerance": 0.000001
+  },
+  "periods": {
+    "TRAIN": ["2020-01-02", "2024-12-31"],
+    "2025": ["2025-01-02", "2025-12-31"],
+    "2026": ["2026-01-02", "2026-07-29"],
+    "FULL": ["2020-01-02", "2026-07-29"]
+  },
+  "training_folds": {
+    "TRAIN_FOLD_1": ["2020-01-02", "2021-12-31"],
+    "TRAIN_FOLD_2": ["2022-01-03", "2022-12-30"],
+    "TRAIN_FOLD_3": ["2023-01-03", "2024-12-31"]
+  },
+  "minimum_train_mdd": -40.0,
+  "minimum_positive_folds": 2,
+  "minimum_worst_fold_roi": -25.0,
+  "target_full_cagr_band": [40.0, 45.0],
+  "target_full_mdd_floor": -35.0,
+  "mdd_search_minimum_full_cagr": 35.0,
+  "objective": {
+    "train_cagr_weight": 0.5,
+    "median_fold_cagr_weight": 0.5,
+    "fold_cagr_std_penalty": 0.25,
+    "train_sharpe_weight": 2.0,
+    "train_mdd_weight": 0.08,
+    "overlay_turnover_penalty": 0.03
+  },
+  "candidate_grid": {
+    "product_types": ["SYNTHETIC_V7_2X", "SYNTHETIC_SPY_2X"],
+    "sma_windows": [100, 150, 200, 250],
+    "sma_buffers": [0.0],
+    "sma_slope_lookbacks": [0, 63],
+    "vix_ceilings": [20.0, 25.0, 30.0, 1000.0],
+    "base_drawdown_floors": [-0.06, -0.1, -0.15, -1.0],
+    "risk_on_product_weights": [0.25, 0.35, 0.5, 0.65, 0.8, 1.0],
+    "risk_off_product_weights": [0.0, 0.1, 0.2],
+    "risk_off_cash_weights": [0.0, 0.25, 0.5, 0.75, 1.0]
+  },
+  "stress_transaction_cost_bps": [10.0, 25.0, 50.0],
+  "stress_annual_expense_ratios": [0.0095, 0.015],
+  "stress_annual_financing_spreads": [0.01, 0.02]
+}

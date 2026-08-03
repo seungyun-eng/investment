@@ -297,6 +297,7 @@ def evaluate_period(
     targets = generate_rebalance_targets(
         score_panel(signal_days, params),
         params,
+        force_universe_exit=settings.force_universe_exit,
     )
     strategy = run_portfolio_backtest(
         panel,

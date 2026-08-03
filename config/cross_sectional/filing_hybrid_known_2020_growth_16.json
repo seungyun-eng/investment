@@ -1,0 +1,29 @@
+{
+  "research_status": "RELAXED_TRAIN_SELECTION_NO_STRICT_PASS",
+  "selection_period": ["2020-01-02", "2024-12-31"],
+  "report_only_period": ["2025-01-02", "2026-07-29"],
+  "candidate_count": 288,
+  "strict_candidate_count": 0,
+  "selection_source": "Results/Cross_Sectional/filing_hybrid_optimization/20260802_082227_known16_train_only/selection.json",
+  "hybrid": {
+    "core_slots": 3,
+    "core_total_weight": 0.7,
+    "core_minimum_hold_weeks": 13,
+    "core_hard_stop_return": -0.2,
+    "core_replacement_score_advantage": 0.1,
+    "core_replacement_confirm_weeks": 4,
+    "tactical_slots": 2,
+    "tactical_position_weight": 0.15,
+    "tactical_hard_stop_return": -0.15,
+    "tactical_time_stop_weeks": 10,
+    "tactical_required_peak_return": 0.1,
+    "tactical_trailing_activation_return": 0.15,
+    "tactical_trailing_drawdown": -0.08,
+    "thesis_break_confirm_weeks": 2,
+    "market_regime_enabled": true,
+    "market_regime_sma_sessions": 200,
+    "market_regime_fast_sessions": 50,
+    "market_regime_band": 0.01,
+    "risk_off_core_total_weight": 0.0
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "output_label": "known_2020_growth_16_v7",
+  "technical_variant": "V7_3_MA_MACD_OBV_SLOT5",
+  "universe": [
+    {"ticker": "GOOGL", "company": "Alphabet", "price_path": "Back Test/Alphabet/2004.08.19_2026.07.29 Alphabet Historical Data.csv"},
+    {"ticker": "META", "company": "Meta Platforms", "price_path": "Back Test/Meta Platforms/2012.05.18_2026.07.29 Meta Platforms Historical Data.csv"},
+    {"ticker": "AMZN", "company": "Amazon", "price_path": "Back Test/Amazon/2018.01.02_2026.07.29 Amazon Historical Data.csv"},
+    {"ticker": "TSLA", "company": "Tesla", "price_path": "Back Test/Tesla/2010.06.29_2026.07.29 Tesla Historical Data.csv"},
+    {"ticker": "NVDA", "company": "Nvidia", "price_path": "Back Test/Nvidia/1999.01.22_2026.07.29 Nvidia Historical Data.csv"},
+    {"ticker": "AAPL", "company": "Apple", "price_path": "Back Test/Apple/1980.12.12_2026.07.29 Apple Historical Data.csv"},
+    {"ticker": "NFLX", "company": "Netflix", "price_path": "Back Test/Netflix/2019.01.02_2026.07.29 Netflix Historical Data.csv"},
+    {"ticker": "MSFT", "company": "Microsoft", "price_path": "Back Test/Microsoft/1986.03.13_2026.07.29 Microsoft Historical Data.csv"},
+    {"ticker": "AVGO", "company": "Broadcom", "price_path": "Back Test/Broadcom/2009.08.06_2026.07.29 Broadcom Historical Data.csv"},
+    {"ticker": "AMD", "company": "Advanced Micro Devices", "price_path": "Back Test/Advanced Micro Devices/2019.01.02_2026.07.29 Advanced Micro Devices Historical Data.csv"},
+    {"ticker": "PLTR", "company": "Palantir Technologies", "price_path": "Back Test/Palantir Technologies/2020.09.30_2026.07.29 Palantir Technologies Historical Data.csv"},
+    {"ticker": "U", "company": "Unity Software", "price_path": "Back Test/Unity Software/2020.09.18_2026.07.24 Unity Software Historical Data.csv"},
+    {"ticker": "EH", "company": "Ehang Holdings", "price_path": "Back Test/Ehang Holdings/2019.12.13_2026.07.24 Ehang Holdings Historical Data.csv"},
+    {"ticker": "CRSP", "company": "Crispr Therapeutics Ag", "price_path": "Back Test/Crispr Therapeutics Ag/2016.10.19_2026.07.24 Crispr Therapeutics Ag Historical Data.csv"},
+    {"ticker": "DIS", "company": "Walt Disney Company (The)", "price_path": "Back Test/Walt Disney Company (The)/2019.01.02_2026.07.29 Walt Disney Company (The) Historical Data.csv"},
+    {"ticker": "NKE", "company": "Nike", "price_path": "Back Test/Nike/2019.01.02_2026.07.29 Nike Historical Data.csv"}
+  ],
+  "research": {
+    "research_label": "known_2020_growth_16_v7",
+    "validation_is_fresh": false,
+    "selection_validation_label": null,
+    "train_start": "2020-01-02",
+    "train_end": "2024-12-31",
+    "validation_periods": {
+      "2025": ["2025-01-02", "2025-12-31"],
+      "2026": ["2026-01-02", "2026-07-29"]
+    },
+    "candidate_count": 2000,
+    "seed": 20260802,
+    "initial_capital": 100000.0,
+    "transaction_cost_bps": 10.0,
+    "financial_release_lag_days": 45,
+    "max_financial_age_days": 180,
+    "minimum_price_history_sessions": 200,
+    "minimum_cross_section_size": 8,
+    "minimum_financial_weight": 0.3,
+    "financial_feature_mode": "ttm_value_momentum",
+    "loss_aware_exit_enabled": true,
+    "minimum_exit_gain": 0.01,
+    "conviction_exit_rank": 10,
+    "conviction_trend_floor": -0.1,
+    "conviction_momentum_floor": -0.2,
+    "hard_stop_return": -0.35,
+    "minimum_hold_rebalances": 4,
+    "replacement_score_advantage": 0.05,
+    "dcf_wacc": 0.1,
+    "dcf_cost_of_equity": 0.1,
+    "dcf_short_growth": 0.05,
+    "dcf_projection_years": 5,
+    "dcf_terminal_growth": 0.025,
+    "rebalance_weekday": 4,
+    "training_folds": [
+      ["2020-01-02", "2021-12-31"],
+      ["2022-01-03", "2022-12-30"],
+      ["2023-01-03", "2024-12-31"]
+    ]
+  }
+}

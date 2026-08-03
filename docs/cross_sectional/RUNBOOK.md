@@ -110,3 +110,40 @@ python scripts/cross_sectional/compare_v6_variants.py
 이 비교는 V5, 네 개 단일 규칙, 결합형을 같은 데이터와 가중치로 실행해
 `v6_variant_summary.csv`, 자산곡선, 포지션 원장, 리밸런싱 이벤트와 HTML을
 `Results/Cross_Sectional/v6_comparison` 아래에 원자적으로 기록한다.
+
+## 2019–2026 S&P 500 구성종목과 데이터 백필
+
+연도별 S&P 500 멤버십 요약, 연중 변경일 멤버십, 전체 기간 종목 합집합을
+생성한다. 이 단계는 가격이나 재무 데이터를 받지 않는다.
+
+```powershell
+$env:PYTHONPATH = "src"
+python scripts/cross_sectional/build_sp500_universe.py
+```
+
+결과의 `sp500_membership.csv`는 매년 1월 1일 요약이고,
+`sp500_membership_changes.csv`는 연중 변경일까지 반영한 백테스트
+멤버십이다. `sp500_union.csv`는 가격·재무 수집 큐다. 합집합을 고정 과거
+유니버스로 사용하면 미래 구성종목을 미리 아는 생존·선택 편향이 생긴다.
+
+가격만 먼저 백필하려면 다음 명령을 실행한다.
+
+```powershell
+$env:PYTHONPATH = "src"
+python scripts/cross_sectional/backfill_sp500_universe.py --stage price
+```
+
+재무만 백필하려면 별도로 실행한다.
+
+```powershell
+$env:PYTHONPATH = "src"
+python scripts/cross_sectional/backfill_sp500_universe.py --stage financial
+```
+
+둘 다 기존 검증을 통과한 파일은 건너뛴다. 장시간 실행은 `--limit` 또는
+반복 가능한 `--ticker` 옵션으로 나눌 수 있다. 출력은 sibling OneDrive의
+`Results/Cross_Sectional/sp500_backfill_runs`에 원자적으로 체크포인트된다.
+상장폐지·인수 종목의 가격이나 현재 웹 재무 페이지가 없으면 실패 상태를
+보존하며 다른 종목으로 자동 대체하지 않는다.
+`sp500_union.csv`의 `CrawlBlockReason`이 채워진 과거 재사용 티커는 잘못된
+현재 증권을 받지 않도록 자동 백필 대상에서 제외된다.

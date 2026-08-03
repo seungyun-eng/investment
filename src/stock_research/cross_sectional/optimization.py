@@ -275,7 +275,12 @@ def _evaluate_candidate(
         compact=True,
         presorted=True,
     )
-    targets = generate_rebalance_targets(scored, params, compact=True)
+    targets = generate_rebalance_targets(
+        scored,
+        params,
+        compact=True,
+        force_universe_exit=settings.force_universe_exit,
+    )
     result = run_portfolio_backtest(
         pd.DataFrame(),
         targets,
@@ -351,7 +356,12 @@ def _add_selection_metrics(
         compact=True,
         presorted=True,
     )
-    targets = generate_rebalance_targets(scored, params, compact=True)
+    targets = generate_rebalance_targets(
+        scored,
+        params,
+        compact=True,
+        force_universe_exit=settings.force_universe_exit,
+    )
     result = run_portfolio_backtest(
         pd.DataFrame(),
         targets,

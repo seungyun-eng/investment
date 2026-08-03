@@ -1,0 +1,45 @@
+{
+  "top_n": 15,
+  "technical_variant": "V7_3_MA_MACD_OBV_SLOT5",
+  "research": {
+    "research_label": "dynamic_sp500_top15_v7_financial_technical",
+    "validation_is_fresh": false,
+    "selection_validation_label": null,
+    "train_start": "2020-01-02",
+    "train_end": "2024-12-31",
+    "validation_periods": {
+      "2025": ["2025-01-02", "2025-12-31"],
+      "2026": ["2026-01-02", "2026-07-29"]
+    },
+    "candidate_count": 2000,
+    "seed": 20260802,
+    "initial_capital": 100000.0,
+    "transaction_cost_bps": 10.0,
+    "financial_release_lag_days": 45,
+    "max_financial_age_days": 180,
+    "minimum_price_history_sessions": 200,
+    "minimum_cross_section_size": 8,
+    "minimum_financial_weight": 0.3,
+    "financial_feature_mode": "ttm_value_momentum",
+    "force_universe_exit": true,
+    "loss_aware_exit_enabled": true,
+    "minimum_exit_gain": 0.01,
+    "conviction_exit_rank": 10,
+    "conviction_trend_floor": -0.1,
+    "conviction_momentum_floor": -0.2,
+    "hard_stop_return": -0.35,
+    "minimum_hold_rebalances": 4,
+    "replacement_score_advantage": 0.05,
+    "dcf_wacc": 0.1,
+    "dcf_cost_of_equity": 0.1,
+    "dcf_short_growth": 0.05,
+    "dcf_projection_years": 5,
+    "dcf_terminal_growth": 0.025,
+    "rebalance_weekday": 4,
+    "training_folds": [
+      ["2020-01-02", "2021-12-31"],
+      ["2022-01-03", "2022-12-30"],
+      ["2023-01-03", "2024-12-31"]
+    ]
+  }
+}

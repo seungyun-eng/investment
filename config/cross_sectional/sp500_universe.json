@@ -1,0 +1,8 @@
+{
+  "snapshot_years": [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026],
+  "snapshot_month": 1,
+  "snapshot_day": 1,
+  "request_timeout_seconds": 30.0,
+  "historical_constituents_url": "https://raw.githubusercontent.com/hanshof/sp500_constituents/main/sp_500_historical_components.csv",
+  "wikipedia_url": "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+}

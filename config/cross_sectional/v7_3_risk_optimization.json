@@ -1,0 +1,234 @@
+{
+  "minimum_membership_snapshot_count": 50,
+  "baseline_parity": {
+    "start_date": "2020-01-02",
+    "end_date": "2026-07-29",
+    "roi": 344.0391775367818,
+    "cagr": 25.466975056825515,
+    "max_drawdown": -36.47016472092517,
+    "sharpe": 1.0292186650376662,
+    "tolerance": 0.000001
+  },
+  "full_target_cagr": 35.0,
+  "volatility_window": 63,
+  "minimum_volatility_observations": 42,
+  "covariance_shrinkage": 0.5,
+  "asset_volatility_floor": 0.1,
+  "max_ticker_weight": 0.3,
+  "max_sector_weight": 0.4,
+  "spy_sma_window": 200,
+  "funding_annual_rate": 0.06,
+  "minimum_train_mdd": -55.0,
+  "minimum_positive_folds": 2,
+  "minimum_worst_fold_roi": -30.0,
+  "objective": {
+    "train_cagr_weight": 0.5,
+    "median_fold_cagr_weight": 0.5,
+    "fold_cagr_std_penalty": 0.25,
+    "train_sharpe_weight": 2.0,
+    "train_mdd_weight": 0.05,
+    "turnover_penalty": 0.02
+  },
+  "allocation_profiles": [
+    {
+      "name": "EQUAL_UNCAPPED",
+      "score_strength": 0.0,
+      "inverse_volatility_strength": 0.0,
+      "apply_concentration_caps": false
+    },
+    {
+      "name": "EQUAL_CAPPED",
+      "score_strength": 0.0,
+      "inverse_volatility_strength": 0.0,
+      "apply_concentration_caps": true
+    },
+    {
+      "name": "INVERSE_VOL_025",
+      "score_strength": 0.0,
+      "inverse_volatility_strength": 0.25,
+      "apply_concentration_caps": true
+    },
+    {
+      "name": "INVERSE_VOL_050",
+      "score_strength": 0.0,
+      "inverse_volatility_strength": 0.5,
+      "apply_concentration_caps": true
+    },
+    {
+      "name": "INVERSE_VOL_075",
+      "score_strength": 0.0,
+      "inverse_volatility_strength": 0.75,
+      "apply_concentration_caps": true
+    },
+    {
+      "name": "SCORE_025_VOL_025",
+      "score_strength": 0.25,
+      "inverse_volatility_strength": 0.25,
+      "apply_concentration_caps": true
+    },
+    {
+      "name": "SCORE_050_VOL_025",
+      "score_strength": 0.5,
+      "inverse_volatility_strength": 0.25,
+      "apply_concentration_caps": true
+    },
+    {
+      "name": "SCORE_050_VOL_050",
+      "score_strength": 0.5,
+      "inverse_volatility_strength": 0.5,
+      "apply_concentration_caps": true
+    },
+    {
+      "name": "SCORE_075_VOL_050",
+      "score_strength": 0.75,
+      "inverse_volatility_strength": 0.5,
+      "apply_concentration_caps": true
+    },
+    {
+      "name": "SCORE_100_VOL_050",
+      "score_strength": 1.0,
+      "inverse_volatility_strength": 0.5,
+      "apply_concentration_caps": true
+    }
+  ],
+  "risk_profiles": [
+    {
+      "name": "UNLEVERED",
+      "fixed_long_gross": null,
+      "target_portfolio_volatility": null,
+      "minimum_long_gross": 0.0,
+      "max_long_gross": 1.0,
+      "risk_off_gross_cap": 1.0
+    },
+    {
+      "name": "FIXED_110",
+      "fixed_long_gross": 1.1,
+      "target_portfolio_volatility": null,
+      "minimum_long_gross": 0.0,
+      "max_long_gross": 1.1,
+      "risk_off_gross_cap": 1.1
+    },
+    {
+      "name": "FIXED_120",
+      "fixed_long_gross": 1.2,
+      "target_portfolio_volatility": null,
+      "minimum_long_gross": 0.0,
+      "max_long_gross": 1.2,
+      "risk_off_gross_cap": 1.2
+    },
+    {
+      "name": "FIXED_125",
+      "fixed_long_gross": 1.25,
+      "target_portfolio_volatility": null,
+      "minimum_long_gross": 0.0,
+      "max_long_gross": 1.25,
+      "risk_off_gross_cap": 1.25
+    },
+    {
+      "name": "FIXED_130",
+      "fixed_long_gross": 1.3,
+      "target_portfolio_volatility": null,
+      "minimum_long_gross": 0.0,
+      "max_long_gross": 1.3,
+      "risk_off_gross_cap": 1.3
+    },
+    {
+      "name": "FIXED_135",
+      "fixed_long_gross": 1.35,
+      "target_portfolio_volatility": null,
+      "minimum_long_gross": 0.0,
+      "max_long_gross": 1.35,
+      "risk_off_gross_cap": 1.35
+    },
+    {
+      "name": "FIXED_140",
+      "fixed_long_gross": 1.4,
+      "target_portfolio_volatility": null,
+      "minimum_long_gross": 0.0,
+      "max_long_gross": 1.4,
+      "risk_off_gross_cap": 1.4
+    },
+    {
+      "name": "FIXED_145",
+      "fixed_long_gross": 1.45,
+      "target_portfolio_volatility": null,
+      "minimum_long_gross": 0.0,
+      "max_long_gross": 1.45,
+      "risk_off_gross_cap": 1.45
+    },
+    {
+      "name": "FIXED_150",
+      "fixed_long_gross": 1.5,
+      "target_portfolio_volatility": null,
+      "minimum_long_gross": 0.0,
+      "max_long_gross": 1.5,
+      "risk_off_gross_cap": 1.5
+    },
+    {
+      "name": "FIXED_155",
+      "fixed_long_gross": 1.55,
+      "target_portfolio_volatility": null,
+      "minimum_long_gross": 0.0,
+      "max_long_gross": 1.55,
+      "risk_off_gross_cap": 1.55
+    },
+    {
+      "name": "FIXED_160",
+      "fixed_long_gross": 1.6,
+      "target_portfolio_volatility": null,
+      "minimum_long_gross": 0.0,
+      "max_long_gross": 1.6,
+      "risk_off_gross_cap": 1.6
+    },
+    {
+      "name": "FIXED_135_RISKOFF_100",
+      "fixed_long_gross": 1.35,
+      "target_portfolio_volatility": null,
+      "minimum_long_gross": 0.0,
+      "max_long_gross": 1.35,
+      "risk_off_gross_cap": 1.0
+    },
+    {
+      "name": "FIXED_150_RISKOFF_100",
+      "fixed_long_gross": 1.5,
+      "target_portfolio_volatility": null,
+      "minimum_long_gross": 0.0,
+      "max_long_gross": 1.5,
+      "risk_off_gross_cap": 1.0
+    },
+    {
+      "name": "VOL28_MIN085_MAX135_RISKOFF085",
+      "fixed_long_gross": null,
+      "target_portfolio_volatility": 0.28,
+      "minimum_long_gross": 0.85,
+      "max_long_gross": 1.35,
+      "risk_off_gross_cap": 0.85
+    },
+    {
+      "name": "VOL32_MIN100_MAX150_RISKOFF100",
+      "fixed_long_gross": null,
+      "target_portfolio_volatility": 0.32,
+      "minimum_long_gross": 1.0,
+      "max_long_gross": 1.5,
+      "risk_off_gross_cap": 1.0
+    },
+    {
+      "name": "VOL36_MIN100_MAX160_RISKOFF100",
+      "fixed_long_gross": null,
+      "target_portfolio_volatility": 0.36,
+      "minimum_long_gross": 1.0,
+      "max_long_gross": 1.6,
+      "risk_off_gross_cap": 1.0
+    },
+    {
+      "name": "VOL40_MIN100_MAX160_NO_GATE",
+      "fixed_long_gross": null,
+      "target_portfolio_volatility": 0.4,
+      "minimum_long_gross": 1.0,
+      "max_long_gross": 1.6,
+      "risk_off_gross_cap": 1.6
+    }
+  ],
+  "stress_transaction_cost_bps": [10.0, 25.0, 50.0],
+  "stress_funding_annual_rates": [0.06, 0.08, 0.1]
+}

@@ -42,6 +42,7 @@ def score_panel(
             "Date",
             "Ticker",
             "Eligible",
+            "UniverseMember",
             "Close",
             "Trend200",
             "Return126",
@@ -126,6 +127,7 @@ def generate_rebalance_targets(
     params: StrategyParams,
     *,
     compact: bool = False,
+    force_universe_exit: bool = False,
 ) -> pd.DataFrame:
     """Create stateful top-K targets with an exit-rank no-trade band."""
 
@@ -223,6 +225,7 @@ def generate_rebalance_targets(
                 reference_return,
                 holding_rebalances.get(ticker, 1),
                 params,
+                force_universe_exit=force_universe_exit,
                 peak_reference_price=current_peak,
                 peak_reference_return=peak_reference_return,
                 profit_exit_streak=profit_exit_streak,
@@ -375,11 +378,19 @@ def _exit_reason(
     held_rebalances: int,
     params: StrategyParams,
     *,
+    force_universe_exit: bool = False,
     peak_reference_price: float | None = None,
     peak_reference_return: float | None = None,
     profit_exit_streak: int = 0,
     replacement_advantage: float | None = None,
 ) -> str | None:
+    if (
+        force_universe_exit
+        and row is not None
+        and "UniverseMember" in row
+        and not _row_bool(row, "UniverseMember")
+    ):
+        return "UNIVERSE_EXIT"
     qualified = bool(row is not None and _row_bool(row, "Qualified"))
     rank_value = float(rank) if pd.notna(rank) else np.inf
     ordinary_exit = not qualified or rank_value > params.exit_rank

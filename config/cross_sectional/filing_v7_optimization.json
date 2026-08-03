@@ -1,0 +1,47 @@
+{
+  "research_status": "POST_HOC_TRAIN_ONLY_RESEARCH",
+  "base_v7_params": {
+    "momentum_weight": 0.20009101845614705,
+    "trend_weight": 0.2616127464904913,
+    "growth_weight": 0.19579717107476866,
+    "quality_weight": 0.3088994675764698,
+    "risk_control_weight": 0.033599596402123184,
+    "top_k": 3,
+    "exit_rank": 7,
+    "trend_floor": -0.2,
+    "momentum_floor": -0.35,
+    "loss_aware_exit_enabled": true,
+    "minimum_exit_gain": 0.01,
+    "conviction_exit_rank": 10,
+    "conviction_trend_floor": -0.1,
+    "conviction_momentum_floor": -0.2,
+    "hard_stop_return": -0.35,
+    "minimum_hold_rebalances": 4,
+    "profit_rotation_exit_rank": 7,
+    "profit_rotation_confirmation_rebalances": 1,
+    "replacement_score_advantage": 0.05,
+    "overheated_entry_enabled": false,
+    "overheated_return126": 1.0,
+    "overheated_trend200": 0.5,
+    "overheated_drawdown126_floor": -0.03,
+    "trailing_stop_enabled": false,
+    "trailing_stop_activation_gain": 0.2,
+    "trailing_stop_drawdown": -0.15
+  },
+  "optimization_grid": {
+    "filing_weights": [0.05, 0.1, 0.15, 0.25, 0.5, 0.75, 1.0],
+    "minimum_filing_coverage": [4, 6],
+    "filing_quality_floors": [null, -0.15, 0.0],
+    "top_k": [3, 5],
+    "exit_rank_buffers": [4, 7],
+    "hard_stop_returns": [-0.35, -0.25],
+    "minimum_hold_rebalances": [4, 8],
+    "replacement_score_advantages": [0.05]
+  },
+  "selection_constraints": {
+    "minimum_cagr": 35.0,
+    "minimum_max_drawdown": -35.0,
+    "minimum_calendar_return": 0.0,
+    "minimum_spy_beat_years": 4
+  }
+}

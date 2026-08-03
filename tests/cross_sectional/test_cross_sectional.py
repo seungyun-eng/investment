@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pandas as pd
 import pytest
 
@@ -276,6 +278,70 @@ def test_exit_rank_band_retains_existing_holding() -> None:
     assert bool(second.loc["A", "ModelSelected"])
     assert second.loc["A", "TradeAction"] == "HOLD"
     assert not bool(second.loc["B", "ModelSelected"])
+
+
+def test_score_proportional_weighting_favors_higher_score() -> None:
+    panel = pd.DataFrame(
+        {
+            "Date": pd.Timestamp("2024-01-05"),
+            "Ticker": ["A", "B", "C"],
+            "Eligible": True,
+            "Trend200": 0.1,
+            "Return126": 0.1,
+            "MomentumFactor": [0.9, 0.3, 0.0],
+            "TrendFactor": 0.0,
+            "GrowthFactor": 0.0,
+            "QualityFactor": 0.0,
+            "RiskControlFactor": 0.0,
+        }
+    )
+    params = replace(
+        _params(), top_k=2, weighting_scheme="score_proportional"
+    )
+    targets = generate_rebalance_targets(score_panel(panel, params), params)
+    selected = targets.set_index("Ticker")
+    assert bool(selected.loc["A", "ModelSelected"])
+    assert bool(selected.loc["B", "ModelSelected"])
+    assert not bool(selected.loc["C", "ModelSelected"])
+    assert selected.loc["A", "TargetWeight"] > selected.loc["B", "TargetWeight"]
+    assert selected.loc["A", "TargetWeight"] + selected.loc[
+        "B", "TargetWeight"
+    ] == pytest.approx(1.0)
+
+
+def test_inverse_volatility_weighting_favors_lower_volatility() -> None:
+    panel = pd.DataFrame(
+        {
+            "Date": pd.Timestamp("2024-01-05"),
+            "Ticker": ["A", "B", "C"],
+            "Eligible": True,
+            "Trend200": 0.1,
+            "Return126": 0.1,
+            "Volatility63": [0.10, 0.40, 0.20],
+            "MomentumFactor": [0.5, 0.4, 0.3],
+            "TrendFactor": 0.0,
+            "GrowthFactor": 0.0,
+            "QualityFactor": 0.0,
+            "RiskControlFactor": 0.0,
+        }
+    )
+    params = replace(
+        _params(), top_k=2, weighting_scheme="inverse_volatility"
+    )
+    targets = generate_rebalance_targets(score_panel(panel, params), params)
+    selected = targets.set_index("Ticker")
+    assert bool(selected.loc["A", "ModelSelected"])
+    assert bool(selected.loc["B", "ModelSelected"])
+    assert not bool(selected.loc["C", "ModelSelected"])
+    assert selected.loc["A", "TargetWeight"] > selected.loc["B", "TargetWeight"]
+    assert selected.loc["A", "TargetWeight"] + selected.loc[
+        "B", "TargetWeight"
+    ] == pytest.approx(1.0)
+
+
+def test_invalid_weighting_scheme_is_rejected() -> None:
+    with pytest.raises(ValueError, match="weighting_scheme"):
+        replace(_params(), weighting_scheme="momentum_tilted")
 
 
 def test_signal_day_prefers_complete_cross_section_over_later_date() -> None:

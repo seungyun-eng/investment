@@ -47,6 +47,7 @@ def score_panel(
             "Trend200",
             "Return126",
             "Drawdown126",
+            "Volatility63",
             *FACTOR_COLUMNS,
         ]
         frame = panel.loc[
@@ -109,6 +110,7 @@ def score_panel(
                 "Trend200",
                 "Return126",
                 "Drawdown126",
+                "Volatility63",
                 "AlphaScore",
                 "Qualified",
                 "Rank",
@@ -270,7 +272,9 @@ def generate_rebalance_targets(
             profit_exit_streak_values[ticker] = 0
             reference_returns[ticker] = 0.0
             peak_reference_returns[ticker] = 0.0
-        target_weight = 1.0 / len(held) if held else 0.0
+        position_weights = _position_weights(
+            held, rows_by_ticker, params.weighting_scheme
+        )
 
         if compact:
             selected_tickers = sorted(held)
@@ -279,7 +283,10 @@ def generate_rebalance_targets(
                     {
                         "Date": pd.Timestamp(date),
                         "Ticker": selected_tickers,
-                        "TargetWeight": target_weight,
+                        "TargetWeight": [
+                            position_weights[ticker]
+                            for ticker in selected_tickers
+                        ],
                         "SignalDate": pd.Timestamp(date),
                     }
                 )
@@ -301,10 +308,8 @@ def generate_rebalance_targets(
             continue
 
         current = group.copy()
-        current["TargetWeight"] = np.where(
-            current["Ticker"].isin(held),
-            target_weight,
-            0.0,
+        current["TargetWeight"] = (
+            current["Ticker"].map(position_weights).fillna(0.0)
         )
         current["ModelSelected"] = current["Ticker"].isin(held)
         current["EntryReferencePrice"] = current["Ticker"].map(
@@ -369,6 +374,63 @@ def generate_rebalance_targets(
         ]
         return pd.DataFrame(columns=columns)
     return pd.concat(records, ignore_index=True)
+
+
+def _position_weights(
+    held: set[str],
+    rows_by_ticker: pd.DataFrame,
+    scheme: str,
+) -> dict[str, float]:
+    """Split 100% target exposure across held tickers by the chosen scheme.
+
+    Falls back to equal weight whenever a required input is missing for any
+    held ticker, so a partial data gap never produces an unweighted or
+    negative allocation.
+    """
+
+    if not held:
+        return {}
+    if scheme == "equal":
+        weight = 1.0 / len(held)
+        return {ticker: weight for ticker in held}
+
+    def _lookup(ticker: str, column: str) -> float:
+        row = (
+            rows_by_ticker.loc[ticker]
+            if ticker in rows_by_ticker.index
+            else None
+        )
+        return _row_number(row, column)
+
+    if scheme == "score_proportional":
+        scores = {ticker: _lookup(ticker, "AlphaScore") for ticker in held}
+        if any(pd.isna(value) for value in scores.values()):
+            weight = 1.0 / len(held)
+            return {ticker: weight for ticker in held}
+        floor = min(scores.values())
+        shifted = {
+            ticker: value - floor + 1e-6 for ticker, value in scores.items()
+        }
+        total = sum(shifted.values())
+        if total <= 0:
+            weight = 1.0 / len(held)
+            return {ticker: weight for ticker in held}
+        return {ticker: value / total for ticker, value in shifted.items()}
+
+    if scheme == "inverse_volatility":
+        volatility = {
+            ticker: _lookup(ticker, "Volatility63") for ticker in held
+        }
+        if any(
+            pd.isna(value) or value <= 0 for value in volatility.values()
+        ):
+            weight = 1.0 / len(held)
+            return {ticker: weight for ticker in held}
+        inverse = {ticker: 1.0 / value for ticker, value in volatility.items()}
+        total = sum(inverse.values())
+        return {ticker: value / total for ticker, value in inverse.items()}
+
+    raise ValueError(f"Unknown weighting_scheme: {scheme}")
 
 
 def _exit_reason(

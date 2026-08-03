@@ -64,6 +64,7 @@ def main() -> None:
         optimization_config=optimization,
         filing_features_path=filing_features,
         spy_path=spy,
+        market_cash_gate=dict(universe.get("market_cash_gate", {})),
         output_dir=args.output_dir,
     )
     print(f"Output: {artifacts.output_dir}")

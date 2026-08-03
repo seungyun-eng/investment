@@ -134,6 +134,9 @@ class ResearchSettings:
             )
 
 
+WEIGHTING_SCHEMES = {"equal", "score_proportional", "inverse_volatility"}
+
+
 @dataclass(frozen=True)
 class StrategyParams:
     momentum_weight: float
@@ -162,6 +165,7 @@ class StrategyParams:
     trailing_stop_enabled: bool = False
     trailing_stop_activation_gain: float = 0.20
     trailing_stop_drawdown: float = -0.15
+    weighting_scheme: str = "equal"
 
     def __post_init__(self) -> None:
         weights = self.factor_weights
@@ -217,6 +221,10 @@ class StrategyParams:
         if not -1 < self.trailing_stop_drawdown < 0:
             raise ValueError(
                 "trailing_stop_drawdown must be between -1 and zero"
+            )
+        if self.weighting_scheme not in WEIGHTING_SCHEMES:
+            raise ValueError(
+                f"weighting_scheme must be one of {sorted(WEIGHTING_SCHEMES)}"
             )
 
     @property
@@ -299,6 +307,9 @@ class StrategyParams:
             ),
             trailing_stop_drawdown=float(
                 values.get("trailing_stop_drawdown", -0.15)
+            ),
+            weighting_scheme=str(
+                values.get("weighting_scheme", "equal")
             ),
         )
 

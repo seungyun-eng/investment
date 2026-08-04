@@ -347,6 +347,36 @@ def test_short_signal_executes_next_open_and_profits_from_decline() -> None:
     assert result.summary.roi_percent == pytest.approx(30.0)
 
 
+def test_short_leverage_scales_pnl_on_notional_exposure() -> None:
+    params = IntegratedParams(
+        minimum_hold_sessions=1,
+        short_stop_loss=0.50,
+        short_leverage=2.0,
+    )
+    signals = pd.DataFrame(
+        {
+            "Date": pd.date_range("2024-01-02", periods=4, freq="B"),
+            "Open": [100.0, 100.0, 80.0, 70.0],
+            "Close": [100.0, 90.0, 75.0, 70.0],
+            "CompositeScore": [0.1, 0.1, 0.6, 0.6],
+            "BuySignal": [False, False, False, False],
+            "SellSignal": [True, True, False, False],
+            "ShortSignal": [True, True, False, False],
+            "CoverSignal": [False, False, True, True],
+        }
+    )
+    result = run_integrated_backtest(
+        signals,
+        params,
+        transaction_cost_bps=0,
+        slippage_bps=0,
+        annual_short_borrow_bps=0,
+    )
+    # 1x leverage on the same price path returns +30% (see the unleveraged
+    # short test above); 2x notional exposure should roughly double that.
+    assert result.summary.roi_percent == pytest.approx(60.0)
+
+
 def test_long_trailing_stop_uses_only_prior_peak() -> None:
     params = IntegratedParams(
         stop_loss=0.90,

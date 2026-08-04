@@ -92,7 +92,10 @@ def run_integrated_backtest(
         if index and shares == 0 and short_units == 0:
             if shorts[index - 1]:
                 execution = open_price * sell_cost
-                short_units = cash / execution
+                # short_leverage=1 shorts exactly the account's notional
+                # (self-funding); >1 models a leveraged/2x inverse product by
+                # borrowing additional notional against the same capital.
+                short_units = (cash * params.short_leverage) / execution
                 cash += short_units * execution
                 entry_price = execution
                 short_trough = execution

@@ -68,6 +68,9 @@ def consensus_execution_params(
                 [member.short_trailing_stop for member in members]
             )
         ),
+        short_leverage=float(
+            np.median([member.short_leverage for member in members])
+        ),
         minimum_hold_sessions=int(
             np.median([member.minimum_hold_sessions for member in members])
         ),
@@ -130,6 +133,7 @@ def sample_params(rng: np.random.Generator) -> IntegratedParams:
         trailing_stop=trailing_stop,
         short_stop_loss=float(rng.uniform(0.08, 0.25)),
         short_trailing_stop=float(rng.uniform(0.08, 0.25)),
+        short_leverage=float(rng.uniform(1.0, 2.5)),
         minimum_hold_sessions=int(rng.choice([5, 10, 21, 42, 63])),
     )
 

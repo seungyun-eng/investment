@@ -153,11 +153,19 @@ def generate_integrated_signals(
     frame["SellSignal"] = (
         (exit_trend <= params.trend_exit_threshold) | risk_exit | critical_flag
     )
-    frame["ShortSignal"] = (
+    market_exposure = pd.to_numeric(
+        frame.get("MarketExposureScale", pd.Series(np.nan, index=frame.index)),
+        errors="coerce",
+    ).fillna(1.0)
+    frame["MarketBearConfirmed"] = market_exposure <= params.market_short_exposure_max
+    tactical_short_ready = (
         (frame["TacticalScore"] <= params.short_threshold)
-        & bearish_trend
         & (frame["MacroScore"] <= params.short_macro_score_max)
+    )
+    frame["ShortSignal"] = (
+        bearish_trend
         & (downside_probability >= params.short_downside_probability_min)
+        & (tactical_short_ready | frame["MarketBearConfirmed"])
     )
     frame["CoverSignal"] = (
         (frame["TacticalScore"] >= params.cover_threshold)

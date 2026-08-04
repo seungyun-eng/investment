@@ -37,6 +37,35 @@ def _rsi(close: pd.Series, length: int = 14) -> pd.Series:
     return 100 - 100 / (1 + relative)
 
 
+def _market_exposure_scale(
+    spy_prices: pd.DataFrame,
+    *,
+    slow_sessions: int = 200,
+    full_exposure_trend: float = 0.0,
+    zero_exposure_trend: float = -0.05,
+) -> pd.DataFrame:
+    """Causal SPY-trend exposure scale in [0, 1], ramped instead of binary.
+
+    A local copy of cross_sectional.live_top10_watchlist.
+    compute_graduated_exposure's logic (same validated 0%/-5% default band)
+    -- duplicated rather than imported to avoid a cross_sectional <->
+    tsla_integrated circular import (cross_sectional.data already imports
+    tsla_integrated.data).
+    """
+
+    spy = spy_prices[["Date", "Close"]].copy()
+    spy["Date"] = pd.to_datetime(spy["Date"], errors="raise")
+    spy = spy.sort_values("Date").drop_duplicates("Date", keep="last")
+    close = pd.to_numeric(spy["Close"], errors="coerce")
+    average = close.rolling(slow_sessions, min_periods=slow_sessions).mean()
+    trend = close / average - 1
+    scale = (trend - zero_exposure_trend) / (
+        full_exposure_trend - zero_exposure_trend
+    )
+    spy["MarketExposureScale"] = scale.clip(lower=0.0, upper=1.0).fillna(1.0)
+    return spy[["Date", "MarketExposureScale"]]
+
+
 def _financial_features(
     financials: pd.DataFrame,
     *,
@@ -131,6 +160,7 @@ def build_integrated_features(
     filing_features: pd.DataFrame | None = None,
     ticker: str = "TSLA",
     extra_macro: pd.DataFrame | None = None,
+    spy_prices: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Build daily equity features using only information available that day."""
 
@@ -244,4 +274,20 @@ def build_integrated_features(
         if "YieldCurve" in frame
         else pd.Series(np.nan, index=frame.index)
     )
+
+    # A fixed-rule (not fitted-to-TSLA) SPY 200/50-session trend regime, so a
+    # broad market downtrend can confirm a short even in a training window
+    # where TSLA itself never lived through a real bear market (its own
+    # trailing history has nothing to teach a TSLA-fitted threshold about a
+    # regime it has not yet seen -- see the walk-forward diagnosis).
+    if spy_prices is not None and not spy_prices.empty:
+        exposure = _market_exposure_scale(spy_prices)
+        frame = pd.merge_asof(
+            frame.sort_values("Date"),
+            exposure,
+            on="Date",
+            direction="backward",
+        )
+    else:
+        frame["MarketExposureScale"] = np.nan
     return frame

@@ -146,6 +146,35 @@ def test_short_signal_ignores_strong_financials_when_technicals_are_bearish() ->
     assert bool(signals.loc[0, "ShortSignal"])
 
 
+def test_market_bear_confirms_short_even_when_tactical_score_is_borderline() -> None:
+    # A confirmed SPY-wide bear regime (fixed 200/50-session rule, not fit
+    # to TSLA's own history) should be enough to justify a short on its own,
+    # since TSLA's training window may never have lived through a real bear
+    # market to calibrate short_threshold/short_macro_score_max against.
+    params = IntegratedParams(short_threshold=0.05, short_macro_score_max=0.05)
+    row = _reentry_probe_row(
+        Trend50=-0.20,
+        DownsideProbability21=0.9,
+        MarketExposureScale=0.05,
+    )
+    signals = generate_integrated_signals(row, params)
+    assert signals.loc[0, "TacticalScore"] > params.short_threshold
+    assert bool(signals.loc[0, "MarketBearConfirmed"])
+    assert bool(signals.loc[0, "ShortSignal"])
+
+
+def test_market_bear_not_confirmed_when_exposure_scale_is_high() -> None:
+    params = IntegratedParams(short_threshold=0.05, short_macro_score_max=0.05)
+    row = _reentry_probe_row(
+        Trend50=-0.20,
+        DownsideProbability21=0.9,
+        MarketExposureScale=0.95,
+    )
+    signals = generate_integrated_signals(row, params)
+    assert not bool(signals.loc[0, "MarketBearConfirmed"])
+    assert not bool(signals.loc[0, "ShortSignal"])
+
+
 def test_hy_spread_stress_lowers_macro_score() -> None:
     params = IntegratedParams()
     calm = _reentry_probe_row(HYSpreadPercentile=0.0, YieldCurveInverted=0.0)

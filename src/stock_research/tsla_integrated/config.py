@@ -34,6 +34,7 @@ class IntegratedParams:
     short_stop_loss: float = 0.15
     short_trailing_stop: float = 0.15
     short_leverage: float = 1.0
+    market_short_exposure_max: float = 0.30
     minimum_hold_sessions: int = 10
 
     def __post_init__(self) -> None:
@@ -98,6 +99,10 @@ class IntegratedParams:
             raise ValueError(
                 "short_leverage must be in (0, 3]; models a 1x-3x inverse/"
                 "leveraged short product on notional exposure."
+            )
+        if not 0 <= self.market_short_exposure_max <= 1:
+            raise ValueError(
+                "market_short_exposure_max must be in [0, 1]."
             )
 
     def as_dict(self) -> dict[str, float | int]:

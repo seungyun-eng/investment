@@ -122,6 +122,30 @@ def test_filing_critical_flag_blocks_entries_and_forces_exit() -> None:
     assert bool(signals.loc[0, "SellSignal"])
 
 
+def test_short_signal_ignores_strong_financials_when_technicals_are_bearish() -> None:
+    # Regression test: TSLA's revenue/margins kept growing through the 2022
+    # crash, which pinned CompositeScore above 0.5 all year (see the
+    # walk-forward diagnosis) so no sampled short_threshold could ever fire.
+    # ShortSignal must key off TacticalScore (technical+macro only), not the
+    # fundamentals-anchored CompositeScore.
+    params = IntegratedParams()
+    row = _reentry_probe_row(
+        Trend50=-0.20,
+        RevenueGrowthYoY=0.5,
+        OperatingMargin=0.3,
+        FreeCashFlowMargin=0.3,
+        VixPercentile=0.9,
+        MacroConfirmationScore=0.9,
+        ModelRisk=0.9,
+        DownsideProbability21=0.9,
+    )
+    signals = generate_integrated_signals(row, params)
+    assert signals.loc[0, "FinancialScore"] > 0.8
+    assert signals.loc[0, "CompositeScore"] > params.short_threshold
+    assert signals.loc[0, "TacticalScore"] <= params.short_threshold
+    assert bool(signals.loc[0, "ShortSignal"])
+
+
 def test_hy_spread_stress_lowers_macro_score() -> None:
     params = IntegratedParams()
     calm = _reentry_probe_row(HYSpreadPercentile=0.0, YieldCurveInverted=0.0)

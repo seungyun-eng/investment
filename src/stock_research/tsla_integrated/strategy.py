@@ -69,6 +69,22 @@ def generate_integrated_signals(
         + params.financial_weight * frame["FinancialScore"]
         + params.macro_weight * frame["MacroScore"]
     ).clip(0.0, 1.0)
+    # Short/cover decisions use technical+macro only, excluding
+    # FinancialScore. TSLA's revenue/margins kept growing through the 2022
+    # crash even as the stock fell ~65%, which kept CompositeScore pinned
+    # above ~0.5 all year -- above every short_threshold the search could
+    # sample -- so a fundamentals-anchored score can never recognize a
+    # price-driven selloff worth shorting.
+    tactical_weight_total = max(
+        params.technical_weight + params.macro_weight, 1e-9
+    )
+    frame["TacticalScore"] = (
+        (
+            params.technical_weight * frame["TechnicalScore"]
+            + params.macro_weight * frame["MacroScore"]
+        )
+        / tactical_weight_total
+    ).clip(0.0, 1.0)
     downside_column = (
         "DownsideProbability21"
         if "DownsideProbability21" in frame
@@ -138,13 +154,13 @@ def generate_integrated_signals(
         (exit_trend <= params.trend_exit_threshold) | risk_exit | critical_flag
     )
     frame["ShortSignal"] = (
-        (frame["CompositeScore"] <= params.short_threshold)
+        (frame["TacticalScore"] <= params.short_threshold)
         & bearish_trend
         & (frame["MacroScore"] <= params.short_macro_score_max)
         & (downside_probability >= params.short_downside_probability_min)
     )
     frame["CoverSignal"] = (
-        (frame["CompositeScore"] >= params.cover_threshold)
+        (frame["TacticalScore"] >= params.cover_threshold)
         | ~bearish_trend
         | (downside_probability <= params.cover_downside_probability_max)
     )

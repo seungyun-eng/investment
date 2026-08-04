@@ -168,6 +168,69 @@ def apply_full_cash_market_gate(
     return frame
 
 
+def compute_graduated_exposure(
+    spy_prices: pd.DataFrame,
+    *,
+    slow_sessions: int = 200,
+    full_exposure_trend: float = 0.03,
+    zero_exposure_trend: float = -0.10,
+) -> pd.DataFrame:
+    """Causal SPY-trend exposure scale in [0, 1], ramped instead of binary.
+
+    A binary market gate (see apply_full_cash_market_gate) forces every
+    holding to exit the moment the trend turns risk-off, which showed up in
+    walk-forward testing as a large single-year loss whenever the model had
+    not yet lived through a real downturn. This ramps target weights down
+    linearly as the SPY 200-session trend weakens instead of cutting straight
+    to zero, so a moderate pullback trims exposure rather than forcing a full
+    liquidation. Below `zero_exposure_trend` the scale is 0; above
+    `full_exposure_trend` it is 1; linear in between. Before enough SPY
+    history exists for the rolling average, the scale defaults to 1.0 (same
+    default-risk-on convention as the binary gate).
+    """
+
+    if full_exposure_trend <= zero_exposure_trend:
+        raise ValueError("full_exposure_trend must exceed zero_exposure_trend")
+    spy = spy_prices[["Date", "Close"]].copy()
+    spy["Date"] = pd.to_datetime(spy["Date"], errors="raise")
+    spy = spy.sort_values("Date").drop_duplicates("Date", keep="last")
+    close = pd.to_numeric(spy["Close"], errors="coerce")
+    average = close.rolling(slow_sessions, min_periods=slow_sessions).mean()
+    trend = close / average - 1
+    scale = (trend - zero_exposure_trend) / (full_exposure_trend - zero_exposure_trend)
+    spy["SPYTrendRegime"] = trend
+    spy["ExposureScale"] = scale.clip(lower=0.0, upper=1.0).fillna(1.0)
+    return spy[["Date", "SPYTrendRegime", "ExposureScale"]]
+
+
+def apply_graduated_exposure(
+    targets: pd.DataFrame,
+    exposure: pd.DataFrame,
+) -> pd.DataFrame:
+    """Scale each date's TargetWeight by the causal exposure factor.
+
+    Selection, entries, and exits are untouched; only how much of the
+    already-selected sleeve is funded changes. The scaled-down remainder is
+    implicitly held as cash by the portfolio backtest, which never force-
+    invests unallocated weight.
+    """
+
+    frame = targets.copy()
+    frame["Date"] = pd.to_datetime(frame["Date"], errors="raise")
+    scaled = frame.merge(
+        exposure[["Date", "ExposureScale"]],
+        on="Date",
+        how="left",
+        validate="many_to_one",
+    )
+    scaled["ExposureScale"] = scaled["ExposureScale"].fillna(1.0)
+    scaled["TargetWeight"] = (
+        pd.to_numeric(scaled["TargetWeight"], errors="coerce").fillna(0.0)
+        * scaled["ExposureScale"]
+    )
+    return scaled
+
+
 def allocation_with_cash(targets: pd.DataFrame, date: object | None = None) -> pd.DataFrame:
     """Return the latest target allocation with an explicit CASH row."""
 

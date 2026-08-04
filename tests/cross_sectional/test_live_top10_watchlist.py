@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import pytest
 
 from stock_research.cross_sectional.live_top10_watchlist import (
     allocation_with_cash,
     apply_full_cash_market_gate,
+    apply_graduated_exposure,
     build_top_n_plus_watchlist_membership,
+    compute_graduated_exposure,
     new_account_allocation,
     watchlist_entries,
 )
@@ -56,6 +59,51 @@ def test_market_gate_turns_entire_universe_into_cash() -> None:
     assert not gated["MarketRiskOn"].any()
     assert not gated["Eligible"].any()
     assert not gated["UniverseMember"].any()
+
+
+def test_graduated_exposure_ramps_between_thresholds() -> None:
+    dates = pd.date_range("2020-01-01", periods=220, freq="B")
+    closes = [100.0] * 200 + list(np.linspace(100.0, 94.0, 20))
+    spy = pd.DataFrame({"Date": dates, "Close": closes})
+    exposure = compute_graduated_exposure(spy, slow_sessions=200)
+    last = exposure.iloc[-1]
+    assert -0.10 < last["SPYTrendRegime"] < 0.03
+    assert 0.0 < last["ExposureScale"] < 1.0
+
+
+def test_graduated_exposure_clips_to_zero_below_floor() -> None:
+    dates = pd.date_range("2020-01-01", periods=220, freq="B")
+    closes = [100.0] * 200 + list(np.linspace(100.0, 50.0, 20))
+    spy = pd.DataFrame({"Date": dates, "Close": closes})
+    exposure = compute_graduated_exposure(spy, slow_sessions=200)
+    assert exposure.iloc[-1]["ExposureScale"] == pytest.approx(0.0)
+
+
+def test_graduated_exposure_defaults_to_full_before_history_builds() -> None:
+    dates = pd.date_range("2020-01-01", periods=5, freq="B")
+    spy = pd.DataFrame({"Date": dates, "Close": [100.0, 101.0, 99.0, 102.0, 98.0]})
+    exposure = compute_graduated_exposure(spy, slow_sessions=200)
+    assert (exposure["ExposureScale"] == 1.0).all()
+
+
+def test_apply_graduated_exposure_scales_weight_and_frees_cash() -> None:
+    targets = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(["2026-07-31", "2026-07-31"]),
+            "Ticker": ["A", "B"],
+            "TargetWeight": [0.5, 0.5],
+        }
+    )
+    exposure = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(["2026-07-31"]),
+            "SPYTrendRegime": [-0.05],
+            "ExposureScale": [0.4],
+        }
+    )
+    scaled = apply_graduated_exposure(targets, exposure).set_index("Ticker")
+    assert scaled.loc["A", "TargetWeight"] == pytest.approx(0.2)
+    assert scaled.loc["B", "TargetWeight"] == pytest.approx(0.2)
 
 
 def test_allocation_always_shows_cash_remainder() -> None:

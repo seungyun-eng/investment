@@ -172,8 +172,8 @@ def compute_graduated_exposure(
     spy_prices: pd.DataFrame,
     *,
     slow_sessions: int = 200,
-    full_exposure_trend: float = 0.03,
-    zero_exposure_trend: float = -0.10,
+    full_exposure_trend: float = 0.0,
+    zero_exposure_trend: float = -0.05,
 ) -> pd.DataFrame:
     """Causal SPY-trend exposure scale in [0, 1], ramped instead of binary.
 
@@ -187,6 +187,11 @@ def compute_graduated_exposure(
     `full_exposure_trend` it is 1; linear in between. Before enough SPY
     history exists for the rolling average, the scale defaults to 1.0 (same
     default-risk-on convention as the binary gate).
+
+    Defaults (0% / -5%) are the narrow band that won a rolling walk-forward
+    comparison against wider bands (+3%/-10% and +5%/-20%) on the known16
+    universe: a fast, tight reaction right around the 200-session average
+    outperformed slower/wider ramps on CAGR, MDD, and Sharpe together.
     """
 
     if full_exposure_trend <= zero_exposure_trend:

@@ -65,7 +65,9 @@ def test_graduated_exposure_ramps_between_thresholds() -> None:
     dates = pd.date_range("2020-01-01", periods=220, freq="B")
     closes = [100.0] * 200 + list(np.linspace(100.0, 94.0, 20))
     spy = pd.DataFrame({"Date": dates, "Close": closes})
-    exposure = compute_graduated_exposure(spy, slow_sessions=200)
+    exposure = compute_graduated_exposure(
+        spy, slow_sessions=200, full_exposure_trend=0.03, zero_exposure_trend=-0.10
+    )
     last = exposure.iloc[-1]
     assert -0.10 < last["SPYTrendRegime"] < 0.03
     assert 0.0 < last["ExposureScale"] < 1.0
@@ -75,8 +77,20 @@ def test_graduated_exposure_clips_to_zero_below_floor() -> None:
     dates = pd.date_range("2020-01-01", periods=220, freq="B")
     closes = [100.0] * 200 + list(np.linspace(100.0, 50.0, 20))
     spy = pd.DataFrame({"Date": dates, "Close": closes})
-    exposure = compute_graduated_exposure(spy, slow_sessions=200)
+    exposure = compute_graduated_exposure(
+        spy, slow_sessions=200, full_exposure_trend=0.03, zero_exposure_trend=-0.10
+    )
     assert exposure.iloc[-1]["ExposureScale"] == pytest.approx(0.0)
+
+
+def test_graduated_exposure_default_band_is_narrow() -> None:
+    dates = pd.date_range("2020-01-01", periods=220, freq="B")
+    closes = [100.0] * 200 + list(np.linspace(100.0, 97.0, 20))
+    spy = pd.DataFrame({"Date": dates, "Close": closes})
+    exposure = compute_graduated_exposure(spy, slow_sessions=200)
+    last = exposure.iloc[-1]
+    assert -0.05 < last["SPYTrendRegime"] < 0.0
+    assert 0.0 < last["ExposureScale"] < 1.0
 
 
 def test_graduated_exposure_defaults_to_full_before_history_builds() -> None:

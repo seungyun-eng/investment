@@ -76,6 +76,63 @@ def _macro(prices: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _filing_features(ticker: str = "TSLA") -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "Ticker": [ticker],
+            "AvailableDate": ["2020-01-10"],
+            "RevenueGrowthYoYFiled": [0.9],
+            "OperatingMargin": [0.9],
+            "FreeCashFlowMargin": [0.9],
+            "GoingConcernFlag": [False],
+            "MaterialWeaknessFlag": [False],
+            "RestatementFlag": [False],
+        }
+    )
+
+
+def test_filing_features_override_macrotrends_margin() -> None:
+    prices = _prices()
+    baseline = build_integrated_features(prices, _financials(), _macro(prices))
+    augmented = build_integrated_features(
+        prices,
+        _financials(),
+        _macro(prices),
+        filing_features=_filing_features(),
+        ticker="TSLA",
+    )
+    after = augmented[augmented["Date"] >= "2020-01-13"]
+    baseline_after = baseline[baseline["Date"] >= "2020-01-13"]
+    assert (after["OperatingMargin"] == 0.9).all()
+    assert not (baseline_after["OperatingMargin"] == 0.9).all()
+
+
+def test_filing_critical_flag_blocks_entries_and_forces_exit() -> None:
+    params = IntegratedParams()
+    flagged = _reentry_probe_row(
+        DownsideProbability21=0.20,
+        VixPercentile=0.2,
+        MacroConfirmationScore=0.2,
+        ModelRisk=0.2,
+    )
+    flagged["FilingCriticalFlag"] = True
+    signals = generate_integrated_signals(flagged, params)
+    assert not bool(signals.loc[0, "BuySignal"])
+    assert not bool(signals.loc[0, "RecoveryBuySignal"])
+    assert bool(signals.loc[0, "SellSignal"])
+
+
+def test_hy_spread_stress_lowers_macro_score() -> None:
+    params = IntegratedParams()
+    calm = _reentry_probe_row(HYSpreadPercentile=0.0, YieldCurveInverted=0.0)
+    stressed = _reentry_probe_row(HYSpreadPercentile=1.0, YieldCurveInverted=1.0)
+    calm_signals = generate_integrated_signals(calm, params)
+    stressed_signals = generate_integrated_signals(stressed, params)
+    assert (
+        stressed_signals.loc[0, "MacroScore"] < calm_signals.loc[0, "MacroScore"]
+    )
+
+
 def test_financials_are_not_visible_before_release_lag() -> None:
     prices = _prices()
     features = build_integrated_features(
@@ -117,6 +174,54 @@ def test_signal_function_is_deterministic() -> None:
     first = generate_integrated_signals(features, params)
     second = generate_integrated_signals(features, params)
     pd.testing.assert_series_equal(first["CompositeScore"], second["CompositeScore"])
+
+
+def _reentry_probe_row(**overrides: float) -> pd.DataFrame:
+    base = {
+        "Date": pd.to_datetime(["2026-04-16"]),
+        "RSI14": [50.0],
+        "Trend50": [0.02],
+        "MACD": [0.5],
+        "MACDSignal": [1.0],
+        "RevenueGrowthYoY": [0.1],
+        "OperatingMargin": [0.1],
+        "FreeCashFlowMargin": [0.1],
+        "VixPercentile": [0.5],
+        "MacroConfirmationScore": [0.5],
+        "ModelRisk": [0.5],
+        "DownsideProbability21": [0.5],
+        "Return21": [0.05],
+    }
+    base.update({key: [value] for key, value in overrides.items()})
+    return pd.DataFrame(base)
+
+
+def test_recovery_buy_respects_reentry_downside_probability_gate() -> None:
+    # Regression test: the 2026-04-16 TSLA holdout re-entry happened at
+    # DownsideProbability21=0.481, above buy_downside_probability_max
+    # (0.40), because recovery_buy checked trend only. It must now also be
+    # blocked by reentry_downside_probability_max like a primary entry.
+    params = IntegratedParams()
+    blocked = generate_integrated_signals(
+        _reentry_probe_row(DownsideProbability21=0.60), params
+    )
+    assert not bool(blocked.loc[0, "RecoveryBuySignal"])
+    assert not bool(blocked.loc[0, "BuySignal"])
+
+
+def test_recovery_buy_allows_reentry_within_risk_gates() -> None:
+    params = IntegratedParams()
+    allowed = generate_integrated_signals(
+        _reentry_probe_row(
+            DownsideProbability21=0.20,
+            VixPercentile=0.2,
+            MacroConfirmationScore=0.2,
+            ModelRisk=0.2,
+        ),
+        params,
+    )
+    assert bool(allowed.loc[0, "RecoveryBuySignal"])
+    assert bool(allowed.loc[0, "BuySignal"])
 
 
 def test_consensus_requires_configured_entry_agreement() -> None:

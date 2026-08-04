@@ -45,10 +45,23 @@ def generate_integrated_signals(
         0.40 * revenue_score + 0.35 * margin_score + 0.25 * cash_score
     )
 
+    # Credit-spread and yield-curve stress default to neutral (0.5) when the
+    # extra macro series was not supplied, so this stays a no-op for callers
+    # that only pass the original VIX/ModelRisk-based macro inputs.
+    hy_spread_stress = pd.to_numeric(
+        frame.get("HYSpreadPercentile", pd.Series(np.nan, index=frame.index)),
+        errors="coerce",
+    ).fillna(0.5)
+    yield_curve_stress = pd.to_numeric(
+        frame.get("YieldCurveInverted", pd.Series(np.nan, index=frame.index)),
+        errors="coerce",
+    ).fillna(0.5)
     macro_stress = _clip(
-        0.40 * pd.to_numeric(frame["VixPercentile"], errors="coerce")
-        + 0.30 * pd.to_numeric(frame["MacroConfirmationScore"], errors="coerce")
-        + 0.30 * pd.to_numeric(frame["ModelRisk"], errors="coerce")
+        0.30 * pd.to_numeric(frame["VixPercentile"], errors="coerce")
+        + 0.20 * pd.to_numeric(frame["MacroConfirmationScore"], errors="coerce")
+        + 0.20 * pd.to_numeric(frame["ModelRisk"], errors="coerce")
+        + 0.20 * hy_spread_stress
+        + 0.10 * yield_curve_stress
     )
     frame["MacroScore"] = 1.0 - macro_stress
     frame["CompositeScore"] = (
@@ -86,12 +99,26 @@ def generate_integrated_signals(
         & (frame["MacroScore"] >= params.buy_macro_score_min)
         & (downside_probability <= params.buy_downside_probability_max)
     )
+    return21 = pd.to_numeric(frame.get("Return21"), errors="coerce")
+    # Re-entry after a stop/exit must still clear the same kind of risk
+    # checks as a primary entry, just at the (looser) reentry_* thresholds
+    # instead of trend alone -- trend-only reentry bought back into TSLA in
+    # 2026-04 at a downside probability (0.48) that the primary entry gate
+    # would have rejected (buy_downside_probability_max=0.40), then rode the
+    # subsequent decline for the rest of the holdout.
     recovery_buy = (
-        entry_trend >= params.trend_entry_threshold
+        (entry_trend >= params.trend_entry_threshold)
+        & (frame["MacroScore"] >= params.reentry_macro_score_min)
+        & (downside_probability <= params.reentry_downside_probability_max)
+        & (return21 >= params.reentry_return21_min)
     )
-    frame["PrimaryBuySignal"] = primary_buy
-    frame["RecoveryBuySignal"] = recovery_buy
-    frame["BuySignal"] = primary_buy | recovery_buy
+    critical_flag = frame.get(
+        "FilingCriticalFlag", pd.Series(False, index=frame.index)
+    ).fillna(False)
+    frame["FilingCriticalFlag"] = critical_flag
+    frame["PrimaryBuySignal"] = primary_buy & ~critical_flag
+    frame["RecoveryBuySignal"] = recovery_buy & ~critical_flag
+    frame["BuySignal"] = frame["PrimaryBuySignal"] | frame["RecoveryBuySignal"]
     bearish_trend = (
         (exit_trend <= params.trend_exit_threshold)
         & (
@@ -108,8 +135,8 @@ def generate_integrated_signals(
         )
     )
     frame["SellSignal"] = (
-        exit_trend <= params.trend_exit_threshold
-    ) | risk_exit
+        (exit_trend <= params.trend_exit_threshold) | risk_exit | critical_flag
+    )
     frame["ShortSignal"] = (
         (frame["CompositeScore"] <= params.short_threshold)
         & bearish_trend

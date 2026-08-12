@@ -1,0 +1,223 @@
+{
+  "top_k": 5,
+  "sec_user_agent": "Personal Research Dashboard seungyun@berkeley.edu",
+  "tickers": [
+    {
+      "ticker": "AAPL",
+      "company": "Apple",
+      "price_path": "Dashboard Data/Prices/AAPL.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "AMZN",
+      "company": "Amazon",
+      "price_path": "Dashboard Data/Prices/AMZN.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "ARRY",
+      "company": "Array Technologies",
+      "price_path": "Dashboard Data/Prices/ARRY.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "AVGO",
+      "company": "Broadcom",
+      "price_path": "Dashboard Data/Prices/AVGO.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "CPNG",
+      "company": "Coupang",
+      "price_path": "Dashboard Data/Prices/CPNG.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "CRSP",
+      "company": "Crispr Therapeutics Ag",
+      "price_path": "Dashboard Data/Prices/CRSP.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "DIS",
+      "company": "Walt Disney Company (The)",
+      "price_path": "Dashboard Data/Prices/DIS.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "EH",
+      "company": "Ehang Holdings",
+      "price_path": "Dashboard Data/Prices/EH.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "GOOG",
+      "company": "Alphabet",
+      "price_path": "Dashboard Data/Prices/GOOG.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "ILMN",
+      "company": "Illumina",
+      "price_path": "Dashboard Data/Prices/ILMN.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "LLY",
+      "company": "Eli Lilly and",
+      "price_path": "Dashboard Data/Prices/LLY.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "META",
+      "company": "Meta Platforms",
+      "price_path": "Dashboard Data/Prices/META.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "MSFT",
+      "company": "Microsoft",
+      "price_path": "Dashboard Data/Prices/MSFT.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "NKE",
+      "company": "Nike",
+      "price_path": "Dashboard Data/Prices/NKE.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "NVDA",
+      "company": "Nvidia",
+      "price_path": "Dashboard Data/Prices/NVDA.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "NVO",
+      "company": "Novo Nordisk",
+      "price_path": "Dashboard Data/Prices/NVO.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "PANW",
+      "company": "Palo Alto Networks",
+      "price_path": "Dashboard Data/Prices/PANW.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "PLTR",
+      "company": "Palantir Technologies",
+      "price_path": "Dashboard Data/Prices/PLTR.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "PLUG",
+      "company": "Plug Power",
+      "price_path": "Dashboard Data/Prices/PLUG.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "SNOW",
+      "company": "Snowflake",
+      "price_path": "Dashboard Data/Prices/SNOW.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "TEVA",
+      "company": "Teva Pharmaceutical Industries",
+      "price_path": "Dashboard Data/Prices/TEVA.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "TSLA",
+      "company": "Tesla",
+      "price_path": "Dashboard Data/Prices/TSLA.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "U",
+      "company": "Unity Software",
+      "price_path": "Dashboard Data/Prices/U.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "UNH",
+      "company": "Unitedhealth Group",
+      "price_path": "Dashboard Data/Prices/UNH.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "WMT",
+      "company": "Walmart",
+      "price_path": "Dashboard Data/Prices/WMT.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-04"
+    },
+    {
+      "ticker": "SPCX",
+      "company": "SPCX",
+      "price_path": "Dashboard Data/Prices/SPCX.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-05"
+    },
+    {
+      "ticker": "MCO",
+      "company": "Moodys",
+      "price_path": "Dashboard Data/Prices/MCO.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-05"
+    },
+    {
+      "ticker": "SPGI",
+      "company": "S&P Global",
+      "price_path": "Dashboard Data/Prices/SPGI.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-05"
+    },
+    {
+      "ticker": "COST",
+      "company": "Costco",
+      "price_path": "Dashboard Data/Prices/COST.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-12"
+    },
+    {
+      "ticker": "UBER",
+      "company": "Uber",
+      "price_path": "Dashboard Data/Prices/UBER.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-12"
+    },
+    {
+      "ticker": "INTC",
+      "company": "Intel",
+      "price_path": "Dashboard Data/Prices/INTC.csv",
+      "source": "yahoo_refresh",
+      "added_date": "2026-08-12"
+    }
+  ]
+}

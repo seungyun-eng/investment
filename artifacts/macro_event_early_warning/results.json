@@ -1,0 +1,208 @@
+{
+  "research_only": true,
+  "generated_at": "2026-08-13",
+  "status": "FROZEN_HOLDOUT_ZERO_FP",
+  "important_caveat": "Zero historical false positives cannot guarantee zero future false positives. Only the post-2017 period is a frozen temporal holdout; the historical event count is very small. Searching 5,346 candidates against only three discovery events creates substantial selection-overfit risk.",
+  "definition": {
+    "event": "Disjoint adjusted-SPY peak-to-trough drawdown of at least 15%",
+    "successful_alert": "Alert episode onset 63 to 7 market sessions before the event peak",
+    "false_positive": "Alert episode onset outside every successful pre-peak window",
+    "episode": "Alert dates separated by no more than 10 sessions are merged; 42-session cooldown"
+  },
+  "data_range": {
+    "start": "1993-01-29",
+    "end": "2026-07-31"
+  },
+  "selection": {
+    "discovery_end": "2017-12-31",
+    "holdout_start": "2018-01-01",
+    "candidate_count": 5346,
+    "eligible_zero_fp_candidates": 9,
+    "constraint": "Discovery false-positive episodes == 0 and captured events >= 1",
+    "tie_break": "Most captured events, then fewest alerts, then stricter trigger"
+  },
+  "selected_rule": {
+    "vulnerability_mode": "both",
+    "macro_threshold": 0.65,
+    "breadth_threshold": 3,
+    "vulnerability_lookback": 21,
+    "trigger_z": 2.0,
+    "momentum_5_threshold": -0.02,
+    "minimum_trigger_components": 3,
+    "trigger_confirmation_days": 3,
+    "maximum_pre_alert_drawdown": -0.05,
+    "confirmation_window": 5,
+    "episode_merge_gap": 10,
+    "cooldown_days": 42
+  },
+  "discovery": {
+    "start_date": "1993-01-29",
+    "end_date": "2017-12-31",
+    "events": 3,
+    "captured_events": 1,
+    "alert_episodes": 1,
+    "true_positive_episodes": 1,
+    "false_positive_episodes": 0,
+    "precision_percent": 100.0,
+    "recall_percent": 33.33333333333333,
+    "event_details": [
+      {
+        "peak_date": "1998-07-20",
+        "trough_date": "1998-08-31",
+        "drawdown_percent": -19.030033017235183,
+        "captured": false,
+        "alert_dates": [],
+        "lead_sessions": []
+      },
+      {
+        "peak_date": "2000-03-24",
+        "trough_date": "2002-10-09",
+        "drawdown_percent": -47.515848620700616,
+        "captured": false,
+        "alert_dates": [],
+        "lead_sessions": []
+      },
+      {
+        "peak_date": "2007-10-09",
+        "trough_date": "2009-03-09",
+        "drawdown_percent": -55.189456206625856,
+        "captured": true,
+        "alert_dates": [
+          "2007-08-02"
+        ],
+        "lead_sessions": [
+          47
+        ]
+      }
+    ],
+    "false_positive_dates": []
+  },
+  "frozen_holdout": {
+    "start_date": "2018-01-01",
+    "end_date": "2026-07-31",
+    "events": 4,
+    "captured_events": 1,
+    "alert_episodes": 1,
+    "true_positive_episodes": 1,
+    "false_positive_episodes": 0,
+    "precision_percent": 100.0,
+    "recall_percent": 25.0,
+    "event_details": [
+      {
+        "peak_date": "2018-09-20",
+        "trough_date": "2018-12-24",
+        "drawdown_percent": -19.348889949728555,
+        "captured": false,
+        "alert_dates": [],
+        "lead_sessions": []
+      },
+      {
+        "peak_date": "2020-02-19",
+        "trough_date": "2020-03-23",
+        "drawdown_percent": -33.71725779466055,
+        "captured": false,
+        "alert_dates": [],
+        "lead_sessions": []
+      },
+      {
+        "peak_date": "2022-01-03",
+        "trough_date": "2022-10-12",
+        "drawdown_percent": -24.49638873467447,
+        "captured": true,
+        "alert_dates": [
+          "2021-12-02"
+        ],
+        "lead_sessions": [
+          21
+        ]
+      },
+      {
+        "peak_date": "2025-02-19",
+        "trough_date": "2025-04-08",
+        "drawdown_percent": -18.75523448942731,
+        "captured": false,
+        "alert_dates": [],
+        "lead_sessions": []
+      }
+    ],
+    "false_positive_dates": []
+  },
+  "full_period_descriptive_only": {
+    "start_date": "1993-01-29",
+    "end_date": "2026-07-31",
+    "events": 7,
+    "captured_events": 2,
+    "alert_episodes": 2,
+    "true_positive_episodes": 2,
+    "false_positive_episodes": 0,
+    "precision_percent": 100.0,
+    "recall_percent": 28.57142857142857,
+    "event_details": [
+      {
+        "peak_date": "1998-07-20",
+        "trough_date": "1998-08-31",
+        "drawdown_percent": -19.030033017235183,
+        "captured": false,
+        "alert_dates": [],
+        "lead_sessions": []
+      },
+      {
+        "peak_date": "2000-03-24",
+        "trough_date": "2002-10-09",
+        "drawdown_percent": -47.515848620700616,
+        "captured": false,
+        "alert_dates": [],
+        "lead_sessions": []
+      },
+      {
+        "peak_date": "2007-10-09",
+        "trough_date": "2009-03-09",
+        "drawdown_percent": -55.189456206625856,
+        "captured": true,
+        "alert_dates": [
+          "2007-08-02"
+        ],
+        "lead_sessions": [
+          47
+        ]
+      },
+      {
+        "peak_date": "2018-09-20",
+        "trough_date": "2018-12-24",
+        "drawdown_percent": -19.348889949728555,
+        "captured": false,
+        "alert_dates": [],
+        "lead_sessions": []
+      },
+      {
+        "peak_date": "2020-02-19",
+        "trough_date": "2020-03-23",
+        "drawdown_percent": -33.71725779466055,
+        "captured": false,
+        "alert_dates": [],
+        "lead_sessions": []
+      },
+      {
+        "peak_date": "2022-01-03",
+        "trough_date": "2022-10-12",
+        "drawdown_percent": -24.49638873467447,
+        "captured": true,
+        "alert_dates": [
+          "2021-12-02"
+        ],
+        "lead_sessions": [
+          21
+        ]
+      },
+      {
+        "peak_date": "2025-02-19",
+        "trough_date": "2025-04-08",
+        "drawdown_percent": -18.75523448942731,
+        "captured": false,
+        "alert_dates": [],
+        "lead_sessions": []
+      }
+    ],
+    "false_positive_dates": []
+  }
+}

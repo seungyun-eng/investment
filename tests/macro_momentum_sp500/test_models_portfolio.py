@@ -155,6 +155,56 @@ def test_stateful_macro_ignores_midweek_threshold_spike() -> None:
     assert signals["SignalState"].eq("NORMAL").all()
 
 
+def test_stateful_macro_early_warning_gate_can_trigger_independently_of_macro_and_risk() -> None:
+    config = ResearchConfig(
+        state_risk_smoothing_days=1,
+        state_macro_smoothing_days=1,
+        state_entry_confirmations=1,
+        state_normal_cooldown_days=1,
+    )
+    predictions = _state_predictions(periods=15, risk=0.10, macro=0.40)
+    early_warning = pd.DataFrame(
+        {
+            "Date": predictions["Date"],
+            "EarlyWarningCaution": [False] * 4 + [True] * 11,
+            "EarlyWarningDefensive": False,
+        }
+    )
+
+    without_gate = stateful_macro_target_weights(predictions, config)
+    with_gate = stateful_macro_target_weights(predictions, config, early_warning=early_warning)
+
+    assert without_gate["SignalState"].eq("NORMAL").all()
+    assert with_gate.loc[4, "SignalState"] == "CAUTION"
+    assert with_gate.loc[4, "TransitionReason"] == "CONFIRMED_EARLY_WARNING_CAUTION"
+
+
+def test_stateful_macro_early_warning_gate_defaults_to_unchanged_behaviour() -> None:
+    config = ResearchConfig(
+        state_risk_smoothing_days=1,
+        state_macro_smoothing_days=1,
+        state_entry_confirmations=1,
+        state_normal_cooldown_days=1,
+    )
+    predictions = _state_predictions(periods=15, risk=0.10, macro=0.40)
+    predictions.loc[4:, "MacroConfirmationScore"] = 0.76
+
+    without_param = stateful_macro_target_weights(predictions, config)
+    with_empty_gate = stateful_macro_target_weights(
+        predictions,
+        config,
+        early_warning=pd.DataFrame(
+            {
+                "Date": predictions["Date"],
+                "EarlyWarningCaution": False,
+                "EarlyWarningDefensive": False,
+            }
+        ),
+    )
+
+    pd.testing.assert_frame_equal(without_param, with_empty_gate)
+
+
 def test_stateful_macro_can_defend_without_model_risk_confirmation() -> None:
     config = ResearchConfig(
         state_risk_smoothing_days=1,

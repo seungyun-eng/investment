@@ -63,11 +63,41 @@ def prediction_target_weights(
     return frame
 
 
+def _entry_reason(
+    joint: bool,
+    macro_only: bool,
+    early_warning: bool,
+    *,
+    joint_label: str,
+    macro_only_label: str,
+    early_warning_label: str,
+) -> str:
+    """Which path actually decided the transition, most-specific first, so a
+    trade log can show whether early-warning ever cast the deciding vote."""
+
+    if early_warning and not joint and not macro_only:
+        return early_warning_label
+    if macro_only and not joint:
+        return macro_only_label
+    return joint_label
+
+
 def stateful_macro_target_weights(
     predictions: pd.DataFrame,
     config: ResearchConfig,
+    *,
+    early_warning: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
-    """Create weekly, hysteretic macro allocation states from OOS predictions."""
+    """Create weekly, hysteretic macro allocation states from OOS predictions.
+
+    `early_warning`, if given, is a `{Date, EarlyWarningCaution,
+    EarlyWarningDefensive}` frame of booleans (e.g. from a fast breadth
+    +persistence rule) that can ALSO trigger CAUTION/DEFENSIVE -- a third,
+    independent path alongside the existing joint (risk AND macro) and
+    macro-only paths, not a replacement for either. Omitting it (the
+    default) reproduces the original behaviour exactly, so existing callers
+    are unaffected.
+    """
 
     required = {
         "Date",
@@ -87,6 +117,19 @@ def stateful_macro_target_weights(
 
     frame = predictions.copy().sort_values("Date").reset_index(drop=True)
     frame["Date"] = pd.to_datetime(frame["Date"])
+    if early_warning is not None:
+        gate = early_warning.copy()
+        gate["Date"] = pd.to_datetime(gate["Date"])
+        frame = frame.merge(
+            gate[["Date", "EarlyWarningCaution", "EarlyWarningDefensive"]],
+            on="Date",
+            how="left",
+        )
+        frame["EarlyWarningCaution"] = frame["EarlyWarningCaution"].fillna(False).astype(bool)
+        frame["EarlyWarningDefensive"] = frame["EarlyWarningDefensive"].fillna(False).astype(bool)
+    else:
+        frame["EarlyWarningCaution"] = False
+        frame["EarlyWarningDefensive"] = False
     total_weight = float(sum(config.state_risk_weights))
     raw_risk = pd.Series(0.0, index=frame.index)
     for horizon, weight in zip(
@@ -162,6 +205,8 @@ def stateful_macro_target_weights(
         momentum_recovery = bool(row["MomentumRecovery"])
         close = float(row["Close"])
         decision_day = bool(row["DecisionDay"])
+        early_warning_caution = bool(row["EarlyWarningCaution"])
+        early_warning_defensive = bool(row["EarlyWarningDefensive"])
         transition_reason = ""
         loss_gate_blocked = False
         joint_emergency = (
@@ -187,7 +232,7 @@ def stateful_macro_target_weights(
             macro_only_caution = (
                 macro >= config.state_macro_only_caution and macro_rising
             )
-            caution_condition = joint_caution or macro_only_caution
+            caution_condition = joint_caution or macro_only_caution or early_warning_caution
             joint_defensive = (
                 risk >= config.state_defensive_entry_risk
                 and macro >= config.state_defensive_macro
@@ -195,7 +240,7 @@ def stateful_macro_target_weights(
             macro_only_defensive = (
                 macro >= config.state_macro_only_defensive and macro_rising
             )
-            defensive_condition = joint_defensive or macro_only_defensive
+            defensive_condition = joint_defensive or macro_only_defensive or early_warning_defensive
             selling_below_reference = close < (
                 normal_reference_close * (1 - config.state_loss_tolerance)
             )
@@ -222,17 +267,19 @@ def stateful_macro_target_weights(
                 ) else 0
             if defensive_count >= config.state_entry_confirmations:
                 new_state = "DEFENSIVE"
-                transition_reason = (
-                    "CONFIRMED_MACRO_ONLY_DEFENSIVE"
-                    if macro_only_defensive and not joint_defensive
-                    else "CONFIRMED_DEFENSIVE_MACRO_RISK"
+                transition_reason = _entry_reason(
+                    joint_defensive, macro_only_defensive, early_warning_defensive,
+                    joint_label="CONFIRMED_DEFENSIVE_MACRO_RISK",
+                    macro_only_label="CONFIRMED_MACRO_ONLY_DEFENSIVE",
+                    early_warning_label="CONFIRMED_EARLY_WARNING_DEFENSIVE",
                 )
             elif caution_count >= config.state_entry_confirmations:
                 new_state = "CAUTION"
-                transition_reason = (
-                    "CONFIRMED_MACRO_ONLY_CAUTION"
-                    if macro_only_caution and not joint_caution
-                    else "CONFIRMED_CAUTION_MACRO_RISK"
+                transition_reason = _entry_reason(
+                    joint_caution, macro_only_caution, early_warning_caution,
+                    joint_label="CONFIRMED_CAUTION_MACRO_RISK",
+                    macro_only_label="CONFIRMED_MACRO_ONLY_CAUTION",
+                    early_warning_label="CONFIRMED_EARLY_WARNING_CAUTION",
                 )
 
         elif state in {"CAUTION", "DEFENSIVE"} and decision_day:
@@ -243,7 +290,7 @@ def stateful_macro_target_weights(
             macro_only_defensive = (
                 macro >= config.state_macro_only_defensive and macro_rising
             )
-            defensive_condition = joint_defensive or macro_only_defensive
+            defensive_condition = joint_defensive or macro_only_defensive or early_warning_defensive
             safe_condition = (
                 (
                     risk <= config.state_exit_risk
@@ -260,10 +307,11 @@ def stateful_macro_target_weights(
                 and defensive_count >= config.state_entry_confirmations
             ):
                 new_state = "DEFENSIVE"
-                transition_reason = (
-                    "CAUTION_ESCALATED_BY_MACRO_ONLY"
-                    if macro_only_defensive and not joint_defensive
-                    else "CAUTION_ESCALATED_TO_DEFENSIVE"
+                transition_reason = _entry_reason(
+                    joint_defensive, macro_only_defensive, early_warning_defensive,
+                    joint_label="CAUTION_ESCALATED_TO_DEFENSIVE",
+                    macro_only_label="CAUTION_ESCALATED_BY_MACRO_ONLY",
+                    early_warning_label="CAUTION_ESCALATED_BY_EARLY_WARNING",
                 )
             elif exit_count >= config.state_exit_confirmations:
                 new_state = "RECOVERY"
@@ -277,7 +325,7 @@ def stateful_macro_target_weights(
             macro_only_caution = (
                 macro >= config.state_macro_only_caution and macro_rising
             )
-            relapse_caution = joint_relapse_caution or macro_only_caution
+            relapse_caution = joint_relapse_caution or macro_only_caution or early_warning_caution
             joint_relapse_defensive = (
                 risk >= config.state_defensive_entry_risk
                 and macro >= config.state_defensive_macro
@@ -285,7 +333,7 @@ def stateful_macro_target_weights(
             macro_only_defensive = (
                 macro >= config.state_macro_only_defensive and macro_rising
             )
-            relapse_defensive = joint_relapse_defensive or macro_only_defensive
+            relapse_defensive = joint_relapse_defensive or macro_only_defensive or early_warning_defensive
             recovery_condition = (
                 (
                     risk <= config.state_recovery_risk
@@ -298,17 +346,19 @@ def stateful_macro_target_weights(
             recovery_count = recovery_count + 1 if recovery_condition else 0
             if defensive_count >= config.state_entry_confirmations:
                 new_state = "DEFENSIVE"
-                transition_reason = (
-                    "RECOVERY_FAILED_MACRO_ONLY_DEFENSIVE"
-                    if macro_only_defensive and not joint_relapse_defensive
-                    else "RECOVERY_FAILED_DEFENSIVE"
+                transition_reason = _entry_reason(
+                    joint_relapse_defensive, macro_only_defensive, early_warning_defensive,
+                    joint_label="RECOVERY_FAILED_DEFENSIVE",
+                    macro_only_label="RECOVERY_FAILED_MACRO_ONLY_DEFENSIVE",
+                    early_warning_label="RECOVERY_FAILED_EARLY_WARNING_DEFENSIVE",
                 )
             elif caution_count >= config.state_entry_confirmations:
                 new_state = "CAUTION"
-                transition_reason = (
-                    "RECOVERY_FAILED_MACRO_ONLY_CAUTION"
-                    if macro_only_caution and not joint_relapse_caution
-                    else "RECOVERY_FAILED_CAUTION"
+                transition_reason = _entry_reason(
+                    joint_relapse_caution, macro_only_caution, early_warning_caution,
+                    joint_label="RECOVERY_FAILED_CAUTION",
+                    macro_only_label="RECOVERY_FAILED_MACRO_ONLY_CAUTION",
+                    early_warning_label="RECOVERY_FAILED_EARLY_WARNING_CAUTION",
                 )
             elif recovery_count >= config.state_exit_confirmations:
                 new_state = "NORMAL"

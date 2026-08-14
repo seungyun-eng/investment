@@ -1,0 +1,114 @@
+{
+  "research_only": true,
+  "generated_at": "2026-08-13",
+  "data_range": {
+    "start": "1993-01-29",
+    "end": "2026-07-31"
+  },
+  "point_in_time_rules": {
+    "claims": "Seven-calendar-day availability lag",
+    "core_inflation": "45-calendar-day availability lag",
+    "market_data": "Signal at close; theoretical execution at next session open"
+  },
+  "warning_rule": "At least two of Labor, Rates, Inflation, CreditConditions, Volatility are stressed, sustained for at least three of five market days.",
+  "events": {
+    "covid": {
+      "event": "covid",
+      "peak_date": "2020-02-19",
+      "trough_date": "2020-03-23",
+      "peak_to_trough_drawdown_percent": -33.71725779466055,
+      "first_persistent_warning_in_prior_63_business_days": {
+        "signal_date": "2019-11-22",
+        "next_open_execution_date": "2019-11-25",
+        "next_open_execution_price": 282.9845928218921,
+        "warning_breadth": 2,
+        "components": [
+          "Labor",
+          "CreditConditions"
+        ],
+        "signal_relative_to_peak_business_days": -58,
+        "drawdown_at_next_open_percent": -8.242077119673885,
+        "additional_decline_after_next_open_percent": -27.763467039475476,
+        "note": "Illustrative exit-only calculation. It assumes cash after the next open and has no re-entry rule, so it is not a portfolio return."
+      }
+    },
+    "rate_credit_bear_2022": {
+      "event": "rate_credit_bear_2022",
+      "peak_date": "2021-12-31",
+      "trough_date": "2022-10-12",
+      "peak_to_trough_drawdown_percent": -24.05922105066778,
+      "first_persistent_warning_in_prior_63_business_days": {
+        "signal_date": "2021-10-01",
+        "next_open_execution_date": "2021-10-04",
+        "next_open_execution_price": 405.9916570765266,
+        "warning_breadth": 2,
+        "components": [
+          "Rates",
+          "Volatility"
+        ],
+        "signal_relative_to_peak_business_days": -63,
+        "drawdown_at_next_open_percent": -9.153571623595113,
+        "additional_decline_after_next_open_percent": -16.407523876793416,
+        "note": "Illustrative exit-only calculation. It assumes cash after the next open and has no re-entry rule, so it is not a portfolio return."
+      }
+    },
+    "spring_drawdown_2025": {
+      "event": "spring_drawdown_2025",
+      "peak_date": "2024-12-06",
+      "trough_date": "2025-04-08",
+      "peak_to_trough_drawdown_percent": -17.795116204282436,
+      "first_persistent_warning_in_prior_63_business_days": {
+        "signal_date": "2024-10-16",
+        "next_open_execution_date": "2024-10-17",
+        "next_open_execution_price": 574.1159000748407,
+        "warning_breadth": 2,
+        "components": [
+          "Labor",
+          "Rates"
+        ],
+        "signal_relative_to_peak_business_days": -36,
+        "drawdown_at_next_open_percent": -3.6031012934318207,
+        "additional_decline_after_next_open_percent": -14.722480807241588,
+        "note": "Illustrative exit-only calculation. It assumes cash after the next open and has no re-entry rule, so it is not a portfolio return."
+      }
+    },
+    "q1_drawdown_2026": {
+      "event": "q1_drawdown_2026",
+      "peak_date": "2026-01-02",
+      "trough_date": "2026-03-30",
+      "peak_to_trough_drawdown_percent": -7.2418368138785,
+      "first_persistent_warning_in_prior_63_business_days": {
+        "signal_date": "2026-02-19",
+        "next_open_execution_date": "2026-02-20",
+        "next_open_execution_price": 678.7131823752115,
+        "warning_breadth": 2,
+        "components": [
+          "Labor",
+          "Inflation"
+        ],
+        "signal_relative_to_peak_business_days": 32,
+        "drawdown_at_next_open_percent": -0.12440595742057026,
+        "additional_decline_after_next_open_percent": -7.126296393715148,
+        "note": "Illustrative exit-only calculation. It assumes cash after the next open and has no re-entry rule, so it is not a portfolio return."
+      }
+    }
+  },
+  "warning_quality_across_all_days": {
+    "persistent_warning_days": {
+      "observations": 2701,
+      "mean_forward_63_business_day_drawdown_percent": -5.33196164479466,
+      "rate_forward_63_business_day_drawdown_below_minus_10pct": 16.95668271010737
+    },
+    "no_persistent_warning_days": {
+      "observations": 5731,
+      "mean_forward_63_business_day_drawdown_percent": -4.406114572466341,
+      "rate_forward_63_business_day_drawdown_below_minus_10pct": 12.40621183039609
+    },
+    "persistent_warning_onsets": {
+      "observations": 157,
+      "mean_forward_63_business_day_drawdown_percent": -4.72762454832511,
+      "rate_forward_63_business_day_drawdown_below_minus_10pct": 12.738853503184714
+    }
+  },
+  "limitation": "This study measures alert timing only. It neither selects thresholds on these events nor includes a re-entry rule, taxes, or opportunity cost."
+}

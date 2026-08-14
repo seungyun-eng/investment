@@ -138,10 +138,29 @@ def build_features(data: pd.DataFrame, config: ResearchConfig) -> pd.DataFrame:
         "Unemployment",
         "WTI",
         "YieldCurveLegacy",
+        "InitialJoblessClaims",
+        "ContinuingJoblessClaims",
+        "Treasury2Y",
+        "RealYield5Y",
+        "CoreCPI",
+        "CorePCE",
     )
     for name in macro_names:
         if name in frame:
             _add_changes(frame, name)
+
+    # Monthly core-price measures are made available only after their release
+    # lag in data.py.  63/126 trading sessions approximate 3/6 months and are
+    # therefore usable as real-time inflation-momentum features.
+    for name in ("CoreCPI", "CorePCE"):
+        if name not in frame:
+            continue
+        values = pd.to_numeric(frame[name], errors="coerce")
+        for sessions, label, annualizer in ((63, "3M", 4), (126, "6M", 2)):
+            momentum = values.pct_change(sessions, fill_method=None) * annualizer
+            feature = f"{name}_Momentum{label}"
+            frame[feature] = momentum
+            frame[f"{feature}_Z252"] = _trailing_zscore(momentum, 252, 126)
 
     if {"VIX", "VIX3M"} <= set(frame):
         frame["VIX_TermStructure"] = frame["VIX"] / frame["VIX3M"] - 1
@@ -170,6 +189,18 @@ def build_features(data: pd.DataFrame, config: ResearchConfig) -> pd.DataFrame:
         ),
         "FinancialConditions": (("NFCI_Z252", 1.0),),
         "Labor": (("Unemployment_Z252", 1.0),),
+        "TimelyLabor": (
+            ("InitialJoblessClaims_Z252", 1.0),
+            ("ContinuingJoblessClaims_Z252", 1.0),
+        ),
+        "Rates": (
+            ("Treasury2Y_Z252", 1.0),
+            ("RealYield5Y_Z252", 1.0),
+        ),
+        "CoreInflation": (
+            ("CoreCPI_Change21_Z252", 1.0),
+            ("CorePCE_Change21_Z252", 1.0),
+        ),
         "YieldCurve": (
             ("T10Y3M_Z252", -1.0),
             ("T10Y2Y_Z252", -1.0),
@@ -186,6 +217,18 @@ def build_features(data: pd.DataFrame, config: ResearchConfig) -> pd.DataFrame:
         ),
         "FinancialConditions": (("NFCI_Change21_Z252", 1.0),),
         "Labor": (("Unemployment_Change21_Z252", 1.0),),
+        "TimelyLabor": (
+            ("InitialJoblessClaims_Change21_Z252", 1.0),
+            ("ContinuingJoblessClaims_Change21_Z252", 1.0),
+        ),
+        "Rates": (
+            ("Treasury2Y_Change21_Z252", 1.0),
+            ("RealYield5Y_Change21_Z252", 1.0),
+        ),
+        "CoreInflation": (
+            ("CoreCPI_Change21_Z252", 1.0),
+            ("CorePCE_Change21_Z252", 1.0),
+        ),
         "YieldCurve": (
             ("T10Y3M_Change21_Z252", -1.0),
             ("T10Y2Y_Change21_Z252", -1.0),
@@ -212,6 +255,52 @@ def build_features(data: pd.DataFrame, config: ResearchConfig) -> pd.DataFrame:
     frame["MacroStressBreadth"] = frame[level_names].gt(0.50).where(
         frame[level_names].notna()
     ).mean(axis=1)
+
+    # Fast early-warning breadth + persistence, distinct from the level/trend
+    # composite above: each domain flags only on a rapid 21-day (or 3M core
+    # inflation) worsening, not on an already-extreme level, and persistence
+    # counts how many of the trailing days a given breadth was sustained --
+    # a continuous alternative to a single hand-picked "N of M days" rule, so
+    # the walk-forward candidate search can find its own threshold instead of
+    # one being pre-declared from inspecting known crises.
+    warning_domains: dict[str, tuple[tuple[str, float], ...]] = {
+        "EarlyWarning_Labor": (
+            ("InitialJoblessClaims_Change21_Z252", 1.0),
+            ("ContinuingJoblessClaims_Change21_Z252", 1.0),
+        ),
+        "EarlyWarning_Rates": (
+            ("Treasury2Y_Change21_Z252", 1.0),
+            ("RealYield5Y_Change21_Z252", 1.0),
+        ),
+        "EarlyWarning_Inflation": (
+            ("CoreCPI_Momentum3M_Z252", 1.0),
+            ("CorePCE_Momentum3M_Z252", 1.0),
+        ),
+        "EarlyWarning_CreditConditions": (
+            ("HYYield_Change21_Z252", 1.0),
+            ("NFCI_Change21_Z252", 1.0),
+        ),
+        "EarlyWarning_Volatility": (("VIX_Change21_Z252", 1.0),),
+    }
+    warning_names: list[str] = []
+    for name, specifications in warning_domains.items():
+        flagged = pd.Series(False, index=frame.index)
+        for column, threshold in specifications:
+            if column in frame:
+                flagged = flagged | frame[column].ge(threshold).fillna(False)
+        frame[name] = flagged.astype(float)
+        warning_names.append(name)
+    frame["EarlyWarningBreadth"] = frame[warning_names].sum(axis=1)
+    for window in (10, 20):
+        for minimum_breadth in (2, 3, 4):
+            if window == 10 and minimum_breadth != 2:
+                continue
+            frame[f"EarlyWarningPersistence{window}_Breadth{minimum_breadth}"] = (
+                frame["EarlyWarningBreadth"]
+                .ge(minimum_breadth)
+                .rolling(window, min_periods=window)
+                .sum()
+            )
 
     numeric_columns = frame.select_dtypes(include=[np.number]).columns
     frame.loc[:, numeric_columns] = frame.loc[:, numeric_columns].replace(

@@ -1,0 +1,441 @@
+{
+  "research_only": true,
+  "generated_at": "2026-08-13",
+  "data_range": {
+    "start": "1993-01-29",
+    "end": "2026-07-31"
+  },
+  "point_in_time_rules": {
+    "jobless_claims": "7-calendar-day availability lag",
+    "core_cpi_core_pce": "45-calendar-day availability lag; 3M uses 63 trading sessions",
+    "treasury_2y_and_real_yield_5y": "close-of-day availability; next-session eligibility"
+  },
+  "important_limit": "This is an early-warning diagnostic, not a fitted forecasting model. The listed events are illustrative and the sample of crises is small.",
+  "predeclared_warning_rule": "At least two of Labor, Rates, Inflation, CreditConditions, Volatility have a 21-day (or Core inflation 3M) trailing z-score at or above +1.",
+  "events": {
+    "covid": {
+      "peak": "2020-02-19",
+      "trough": "2020-03-23",
+      "spy_drawdown_percent": -33.71725779466055,
+      "observations": {
+        "60bd_before_peak": {
+          "asof": "2019-11-27",
+          "warning_breadth": 2,
+          "early_warning": true,
+          "components": {
+            "Labor": true,
+            "Rates": false,
+            "Inflation": false,
+            "CreditConditions": true,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 11.75,
+            "InitialJoblessClaims_Change21_Z252": 1.6408096763564877,
+            "ContinuingJoblessClaims_Change21_Z252": 1.2845797482180497,
+            "Treasury2Y_Change21_Z252": 0.5941623872243098,
+            "RealYield5Y_Change21_Z252": 0.20063028384880544,
+            "CoreCPI_Momentum3M_Z252": 0.6298686086266547,
+            "CorePCE_Momentum3M_Z252": -0.9336395514623118,
+            "HYYield_Change21_Z252": 1.023825285057068,
+            "NFCI_Change21_Z252": -0.8239739325779029,
+            "VIX_Change21_Z252": -0.18010036811793856
+          }
+        },
+        "20bd_before_peak": {
+          "asof": "2020-01-22",
+          "warning_breadth": 1,
+          "early_warning": false,
+          "components": {
+            "Labor": true,
+            "Rates": false,
+            "Inflation": false,
+            "CreditConditions": false,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 12.91,
+            "InitialJoblessClaims_Change21_Z252": -3.2967563996298477,
+            "ContinuingJoblessClaims_Change21_Z252": 1.2989854259803402,
+            "Treasury2Y_Change21_Z252": -0.05878973684378484,
+            "RealYield5Y_Change21_Z252": -0.3457579984316799,
+            "CoreCPI_Momentum3M_Z252": 0.3323945869872178,
+            "CorePCE_Momentum3M_Z252": 0.46464336473345874,
+            "HYYield_Change21_Z252": -0.41305934215116014,
+            "NFCI_Change21_Z252": -0.4331287765028372,
+            "VIX_Change21_Z252": 0.33242877970407253
+          }
+        },
+        "5bd_before_peak": {
+          "asof": "2020-02-12",
+          "warning_breadth": 0,
+          "early_warning": false,
+          "components": {
+            "Labor": false,
+            "Rates": false,
+            "Inflation": false,
+            "CreditConditions": false,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 13.74,
+            "InitialJoblessClaims_Change21_Z252": -1.2128589555744005,
+            "ContinuingJoblessClaims_Change21_Z252": -1.2714901633738178,
+            "Treasury2Y_Change21_Z252": -0.32914217970945586,
+            "RealYield5Y_Change21_Z252": -0.5180066984884486,
+            "CoreCPI_Momentum3M_Z252": 0.3575938139559299,
+            "CorePCE_Momentum3M_Z252": 0.5655759739305278,
+            "HYYield_Change21_Z252": -0.22871337576161227,
+            "NFCI_Change21_Z252": -1.141493523361677,
+            "VIX_Change21_Z252": 0.48987099204217455
+          }
+        },
+        "0bd_before_peak": {
+          "asof": "2020-02-19",
+          "warning_breadth": 0,
+          "early_warning": false,
+          "components": {
+            "Labor": false,
+            "Rates": false,
+            "Inflation": false,
+            "CreditConditions": false,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 14.38,
+            "InitialJoblessClaims_Change21_Z252": -1.542953139540361,
+            "ContinuingJoblessClaims_Change21_Z252": -0.7691121053610217,
+            "Treasury2Y_Change21_Z252": -0.4464236714884924,
+            "RealYield5Y_Change21_Z252": -0.968068737292202,
+            "CoreCPI_Momentum3M_Z252": 0.7567623579311232,
+            "CorePCE_Momentum3M_Z252": 0.9735643160837867,
+            "HYYield_Change21_Z252": 0.19433808794271237,
+            "NFCI_Change21_Z252": 0.06501482681914975,
+            "VIX_Change21_Z252": 0.7232471039798356
+          }
+        }
+      }
+    },
+    "rate_credit_bear_2022": {
+      "peak": "2021-12-31",
+      "trough": "2022-10-12",
+      "spy_drawdown_percent": -24.05922105066778,
+      "observations": {
+        "60bd_before_peak": {
+          "asof": "2021-10-08",
+          "warning_breadth": 3,
+          "early_warning": true,
+          "components": {
+            "Labor": true,
+            "Rates": true,
+            "Inflation": false,
+            "CreditConditions": true,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 18.77,
+            "InitialJoblessClaims_Change21_Z252": 1.0655038023981804,
+            "ContinuingJoblessClaims_Change21_Z252": 0.6702829739951419,
+            "Treasury2Y_Change21_Z252": 1.9747487071536787,
+            "RealYield5Y_Change21_Z252": 1.2681514680727455,
+            "CoreCPI_Momentum3M_Z252": 0.3985235042498332,
+            "CorePCE_Momentum3M_Z252": 0.6328882821671373,
+            "HYYield_Change21_Z252": 1.1978733325226034,
+            "NFCI_Change21_Z252": 0.26935281595917865,
+            "VIX_Change21_Z252": 0.1071469216382221
+          }
+        },
+        "20bd_before_peak": {
+          "asof": "2021-12-03",
+          "warning_breadth": 3,
+          "early_warning": true,
+          "components": {
+            "Labor": false,
+            "Rates": true,
+            "Inflation": false,
+            "CreditConditions": true,
+            "Volatility": true
+          },
+          "values": {
+            "VIX": 30.67,
+            "InitialJoblessClaims_Change21_Z252": -0.04111878785136756,
+            "ContinuingJoblessClaims_Change21_Z252": 0.004527056099618581,
+            "Treasury2Y_Change21_Z252": 1.5354971676916491,
+            "RealYield5Y_Change21_Z252": 0.7226287088642099,
+            "CoreCPI_Momentum3M_Z252": 0.10563436723787943,
+            "CorePCE_Momentum3M_Z252": 0.08505838033288265,
+            "HYYield_Change21_Z252": 1.1392617144993322,
+            "NFCI_Change21_Z252": 3.2000579659318507,
+            "VIX_Change21_Z252": 3.785482539956236
+          }
+        },
+        "5bd_before_peak": {
+          "asof": "2021-12-23",
+          "warning_breadth": 2,
+          "early_warning": true,
+          "components": {
+            "Labor": false,
+            "Rates": true,
+            "Inflation": false,
+            "CreditConditions": true,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 17.96,
+            "InitialJoblessClaims_Change21_Z252": 0.4804432096089614,
+            "ContinuingJoblessClaims_Change21_Z252": 0.6597886300734096,
+            "Treasury2Y_Change21_Z252": 0.9498627954605963,
+            "RealYield5Y_Change21_Z252": 1.1537580512225465,
+            "CoreCPI_Momentum3M_Z252": 0.8501768859245319,
+            "CorePCE_Momentum3M_Z252": 0.5749073491766568,
+            "HYYield_Change21_Z252": -0.34290154720257227,
+            "NFCI_Change21_Z252": 1.5395338613428486,
+            "VIX_Change21_Z252": -0.34595147683223876
+          }
+        },
+        "0bd_before_peak": {
+          "asof": "2021-12-31",
+          "warning_breadth": 1,
+          "early_warning": false,
+          "components": {
+            "Labor": false,
+            "Rates": true,
+            "Inflation": false,
+            "CreditConditions": false,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 17.22,
+            "InitialJoblessClaims_Change21_Z252": 0.8708418033754296,
+            "ContinuingJoblessClaims_Change21_Z252": 0.7858698816494518,
+            "Treasury2Y_Change21_Z252": 1.661071493521466,
+            "RealYield5Y_Change21_Z252": -0.31011199162648045,
+            "CoreCPI_Momentum3M_Z252": 0.8174595900852121,
+            "CorePCE_Momentum3M_Z252": 0.5446905869556442,
+            "HYYield_Change21_Z252": -0.3265794061176111,
+            "NFCI_Change21_Z252": 0.5891115715907669,
+            "VIX_Change21_Z252": -3.1280530619312024
+          }
+        }
+      }
+    },
+    "spring_drawdown_2025": {
+      "peak": "2024-12-06",
+      "trough": "2025-04-08",
+      "spy_drawdown_percent": -17.795116204282436,
+      "observations": {
+        "60bd_before_peak": {
+          "asof": "2024-09-13",
+          "warning_breadth": 0,
+          "early_warning": false,
+          "components": {
+            "Labor": false,
+            "Rates": false,
+            "Inflation": false,
+            "CreditConditions": false,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 16.56,
+            "InitialJoblessClaims_Change21_Z252": -0.4244613892024747,
+            "ContinuingJoblessClaims_Change21_Z252": -0.7762306786127702,
+            "Treasury2Y_Change21_Z252": -1.0553277055997652,
+            "RealYield5Y_Change21_Z252": -0.9837685374846298,
+            "CoreCPI_Momentum3M_Z252": -1.834619398404634,
+            "CorePCE_Momentum3M_Z252": -0.8549969650069147,
+            "HYYield_Change21_Z252": -1.065123940351982,
+            "NFCI_Change21_Z252": -1.4068709836021245,
+            "VIX_Change21_Z252": 0.05102096830158243
+          }
+        },
+        "20bd_before_peak": {
+          "asof": "2024-11-08",
+          "warning_breadth": 1,
+          "early_warning": false,
+          "components": {
+            "Labor": false,
+            "Rates": true,
+            "Inflation": false,
+            "CreditConditions": false,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 14.94,
+            "InitialJoblessClaims_Change21_Z252": -0.8251539231514168,
+            "ContinuingJoblessClaims_Change21_Z252": 0.42059413589779765,
+            "Treasury2Y_Change21_Z252": 1.1734624324555212,
+            "RealYield5Y_Change21_Z252": 0.803833884654203,
+            "CoreCPI_Momentum3M_Z252": -0.3070666321061292,
+            "CorePCE_Momentum3M_Z252": -0.2689010367289642,
+            "HYYield_Change21_Z252": -0.2786535953444748,
+            "NFCI_Change21_Z252": -0.4690285070917046,
+            "VIX_Change21_Z252": -1.5835918669116353
+          }
+        },
+        "5bd_before_peak": {
+          "asof": "2024-11-29",
+          "warning_breadth": 0,
+          "early_warning": false,
+          "components": {
+            "Labor": false,
+            "Rates": false,
+            "Inflation": false,
+            "CreditConditions": false,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 13.51,
+            "InitialJoblessClaims_Change21_Z252": -0.8262238866587758,
+            "ContinuingJoblessClaims_Change21_Z252": 0.9254916681564481,
+            "Treasury2Y_Change21_Z252": 0.1118672366513416,
+            "RealYield5Y_Change21_Z252": -0.06455533425820621,
+            "CoreCPI_Momentum3M_Z252": 0.2756745743504148,
+            "CorePCE_Momentum3M_Z252": 0.18174574553681916,
+            "HYYield_Change21_Z252": -0.04745597197994341,
+            "NFCI_Change21_Z252": -0.6928165280445399,
+            "VIX_Change21_Z252": -1.8713594058730398
+          }
+        },
+        "0bd_before_peak": {
+          "asof": "2024-12-06",
+          "warning_breadth": 0,
+          "early_warning": false,
+          "components": {
+            "Labor": false,
+            "Rates": false,
+            "Inflation": false,
+            "CreditConditions": false,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 12.77,
+            "InitialJoblessClaims_Change21_Z252": -0.004691733088091962,
+            "ContinuingJoblessClaims_Change21_Z252": -0.5274234972900066,
+            "Treasury2Y_Change21_Z252": -0.38716093531823065,
+            "RealYield5Y_Change21_Z252": -0.26321902845776207,
+            "CoreCPI_Momentum3M_Z252": 0.26980726301742125,
+            "CorePCE_Momentum3M_Z252": 0.1662871597273385,
+            "HYYield_Change21_Z252": 0.008343254770631438,
+            "NFCI_Change21_Z252": -0.6566196949183838,
+            "VIX_Change21_Z252": -0.9284882824146473
+          }
+        }
+      }
+    },
+    "q1_drawdown_2026": {
+      "peak": "2026-01-02",
+      "trough": "2026-03-30",
+      "spy_drawdown_percent": -7.2418368138785,
+      "observations": {
+        "60bd_before_peak": {
+          "asof": "2025-10-10",
+          "warning_breadth": 2,
+          "early_warning": true,
+          "components": {
+            "Labor": false,
+            "Rates": false,
+            "Inflation": false,
+            "CreditConditions": true,
+            "Volatility": true
+          },
+          "values": {
+            "VIX": 21.66,
+            "InitialJoblessClaims_Change21_Z252": -0.8149326757459147,
+            "ContinuingJoblessClaims_Change21_Z252": -0.20295000219781495,
+            "Treasury2Y_Change21_Z252": 0.023108164562633177,
+            "RealYield5Y_Change21_Z252": 0.7699057900522817,
+            "CoreCPI_Momentum3M_Z252": 0.6768662793865907,
+            "CorePCE_Momentum3M_Z252": 0.174443974611971,
+            "HYYield_Change21_Z252": 1.0748216655404963,
+            "NFCI_Change21_Z252": 0.3711162191586286,
+            "VIX_Change21_Z252": 1.1037395061647068
+          }
+        },
+        "20bd_before_peak": {
+          "asof": "2025-12-05",
+          "warning_breadth": 0,
+          "early_warning": false,
+          "components": {
+            "Labor": false,
+            "Rates": false,
+            "Inflation": false,
+            "CreditConditions": false,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 15.41,
+            "InitialJoblessClaims_Change21_Z252": -0.2626689466053587,
+            "ContinuingJoblessClaims_Change21_Z252": -1.3414239688727712,
+            "Treasury2Y_Change21_Z252": -0.07222240702232054,
+            "RealYield5Y_Change21_Z252": 0.32502535596754234,
+            "CoreCPI_Momentum3M_Z252": -1.335484955187602,
+            "CorePCE_Momentum3M_Z252": -0.5327268195117095,
+            "HYYield_Change21_Z252": -0.35885362663985776,
+            "NFCI_Change21_Z252": 0.364971542492494,
+            "VIX_Change21_Z252": -0.452534853801362
+          }
+        },
+        "5bd_before_peak": {
+          "asof": "2025-12-26",
+          "warning_breadth": 1,
+          "early_warning": false,
+          "components": {
+            "Labor": false,
+            "Rates": true,
+            "Inflation": false,
+            "CreditConditions": false,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 13.6,
+            "InitialJoblessClaims_Change21_Z252": 0.15978076725361415,
+            "ContinuingJoblessClaims_Change21_Z252": -1.2269532949468052,
+            "Treasury2Y_Change21_Z252": 0.6079347097688145,
+            "RealYield5Y_Change21_Z252": 1.3418023496577087,
+            "CoreCPI_Momentum3M_Z252": -1.7724863955375467,
+            "CorePCE_Momentum3M_Z252": -0.8266472152565274,
+            "HYYield_Change21_Z252": -0.4086664689275453,
+            "NFCI_Change21_Z252": -0.4448000421314888,
+            "VIX_Change21_Z252": -0.7811665477760035
+          }
+        },
+        "0bd_before_peak": {
+          "asof": "2026-01-02",
+          "warning_breadth": 0,
+          "early_warning": false,
+          "components": {
+            "Labor": false,
+            "Rates": false,
+            "Inflation": false,
+            "CreditConditions": false,
+            "Volatility": false
+          },
+          "values": {
+            "VIX": 14.51,
+            "InitialJoblessClaims_Change21_Z252": -0.21954690950036404,
+            "ContinuingJoblessClaims_Change21_Z252": -2.3960281894296274,
+            "Treasury2Y_Change21_Z252": 0.13569014481371577,
+            "RealYield5Y_Change21_Z252": 0.8549253877238413,
+            "CoreCPI_Momentum3M_Z252": -1.7019191756429133,
+            "CorePCE_Momentum3M_Z252": -0.8126282267683983,
+            "HYYield_Change21_Z252": -0.15839381680912037,
+            "NFCI_Change21_Z252": -0.770390452505174,
+            "VIX_Change21_Z252": -0.32311134353842347
+          }
+        }
+      }
+    }
+  },
+  "forward_63_trading_day_diagnostic": {
+    "early_warning": {
+      "days": 2761,
+      "mean_forward_63d_drawdown_percent": -5.367804447916319,
+      "rate_forward_63d_drawdown_below_minus_10pct": 17.3850054328142
+    },
+    "no_early_warning": {
+      "days": 5671,
+      "mean_forward_63d_drawdown_percent": -4.37886844237313,
+      "rate_forward_63d_drawdown_below_minus_10pct": 12.149532710280374
+    }
+  }
+}

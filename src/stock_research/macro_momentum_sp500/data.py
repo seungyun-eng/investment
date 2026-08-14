@@ -120,10 +120,23 @@ def _monthly_specs(config: ResearchConfig) -> tuple[SeriesSpec, ...]:
     lag = config.monthly_release_lag_days
     return (
         SeriesSpec("CPI", "* CPI.csv", lag, "monthly"),
+        SeriesSpec("CoreCPI", "* CoreCPI.csv", lag, "monthly"),
+        SeriesSpec("CorePCE", "* CorePCE.csv", lag, "monthly"),
         SeriesSpec("FedFundsKnown", "* FedFundsRate.csv", lag, "monthly"),
         SeriesSpec("Unemployment", "* Unemployment.csv", lag, "monthly"),
         SeriesSpec("WTI", "* WTI.csv", lag, "monthly"),
         SeriesSpec("YieldCurveLegacy", "* YieldCurve.csv", lag, "monthly"),
+    )
+
+
+def _weekly_daily_specs(config: ResearchConfig) -> tuple[SeriesSpec, ...]:
+    return (
+        # The observation week ends before the Thursday release.  Seven days
+        # is intentionally conservative and avoids same-day hindsight.
+        SeriesSpec("InitialJoblessClaims", "* InitialJoblessClaims.csv", config.weekly_release_lag_days, "weekly"),
+        SeriesSpec("ContinuingJoblessClaims", "* ContinuingJoblessClaims.csv", config.weekly_release_lag_days, "weekly"),
+        SeriesSpec("Treasury2Y", "* Treasury2Y.csv", 0, "daily"),
+        SeriesSpec("RealYield5Y", "* RealYield5Y.csv", 0, "daily"),
     )
 
 
@@ -187,6 +200,20 @@ def load_research_data(
             value_column=spec.name,
             lag_days=spec.lag_days,
             tolerance_days=120,
+        )
+        sources[spec.name] = str(path)
+
+    for spec in _weekly_daily_specs(config):
+        path = _find_latest(macro_folder, spec.pattern)
+        if path is None:
+            continue
+        series = load_value_series(path, spec.name)
+        result = merge_point_in_time(
+            result,
+            series,
+            value_column=spec.name,
+            lag_days=spec.lag_days,
+            tolerance_days=21 if spec.frequency == "weekly" else 7,
         )
         sources[spec.name] = str(path)
 

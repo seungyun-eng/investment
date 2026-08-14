@@ -79,6 +79,70 @@ def test_macro_confirmation_is_bounded_and_uses_only_trailing_data() -> None:
     )
 
 
+def _macro_shock_frames(rows: int = 500, shock_start: int = 450) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """A noisy (non-degenerate) baseline plus a variant with a sustained
+    acceleration in claims AND high-yield borrowing costs from `shock_start`
+    onward -- two distinct domains moving badly at once, unlike a one-off
+    level jump which a 21-day change z-score shrugs off within a month."""
+
+    rng = np.random.default_rng(7)
+    noise = lambda scale: rng.normal(0, scale, rows)
+    original = _market_frame(rows)
+    original["InitialJoblessClaims"] = 210_000 + np.cumsum(noise(300))
+    original["ContinuingJoblessClaims"] = 1_720_000 + np.cumsum(noise(2000))
+    original["Treasury2Y"] = 4.2 + np.cumsum(noise(0.01))
+    original["RealYield5Y"] = 1.6 + np.cumsum(noise(0.01))
+    original["CoreCPI"] = 300 + np.cumsum(np.abs(noise(0.2)))
+    original["CorePCE"] = 120 + np.cumsum(np.abs(noise(0.1)))
+    original["HYYield"] = 6.2 + np.cumsum(noise(0.02))
+    original["NFCI"] = -0.2 + np.cumsum(noise(0.005))
+
+    changed = original.copy()
+    shock_days = np.arange(shock_start, rows) - (shock_start - 1)
+    changed.loc[shock_start:, "InitialJoblessClaims"] = (
+        original.loc[shock_start - 1, "InitialJoblessClaims"] + shock_days * 800
+    )
+    changed.loc[shock_start:, "HYYield"] = (
+        original.loc[shock_start - 1, "HYYield"] + shock_days * 0.05
+    )
+    return original, changed
+
+
+def test_early_warning_breadth_counts_domains_and_uses_only_trailing_data() -> None:
+    config = ResearchConfig(distribution_windows=(252,))
+    original, changed = _macro_shock_frames()
+
+    first = build_features(original, config)
+    second = build_features(changed, config)
+
+    assert first["EarlyWarningBreadth"].dropna().between(0, 5).all()
+    pd.testing.assert_series_equal(
+        first.loc[:449, "EarlyWarningBreadth"],
+        second.loc[:449, "EarlyWarningBreadth"],
+    )
+    pd.testing.assert_series_equal(
+        first.loc[:449, "EarlyWarningPersistence20_Breadth2"],
+        second.loc[:449, "EarlyWarningPersistence20_Breadth2"],
+    )
+    # A sustained (not one-off) acceleration in two domains at once should
+    # keep breadth >= 2 for the whole trailing window, unlike the noisy,
+    # single-domain-at-a-time baseline.
+    assert second.loc[499, "EarlyWarningBreadth"] >= 2
+    assert first.loc[499, "EarlyWarningBreadth"] <= 1
+    assert second.loc[499, "EarlyWarningPersistence20_Breadth2"] >= 18
+    assert second.loc[499, "EarlyWarningPersistence10_Breadth2"] >= 9
+
+
+def test_early_warning_persistence_requires_a_full_window() -> None:
+    config = ResearchConfig(distribution_windows=(252,))
+    original, _ = _macro_shock_frames()
+    result = build_features(original, config)
+    assert pd.isna(result.loc[15, "EarlyWarningPersistence20_Breadth2"])
+    assert not pd.isna(result.loc[30, "EarlyWarningPersistence20_Breadth2"])
+    assert result["EarlyWarningPersistence20_Breadth2"].dropna().between(0, 20).all()
+    assert result["EarlyWarningPersistence10_Breadth2"].dropna().between(0, 10).all()
+
+
 def test_targets_exclude_current_day_and_end_with_nan() -> None:
     config = ResearchConfig(
         return_horizons=(2,),

@@ -2,7 +2,9 @@ const $=id=>document.getElementById(id);
 const now=()=>new Date().toISOString();
 const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
 const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-let state=load('workspeak_v2',{speaking:[],mba:[],saved:[],mastery:{},lastDate:null});
+const defaultState={speaking:[],mba:[],drills:[],saved:[],mastery:{},toeflMastery:{},toeflTests:[],lastDate:null};
+let state=Object.assign({},defaultState,load('workspeak_v2',defaultState));
+state.speaking=state.speaking||[];state.mba=state.mba||[];state.drills=state.drills||[];state.saved=state.saved||[];state.mastery=state.mastery||{};state.toeflMastery=state.toeflMastery||{};state.toeflTests=state.toeflTests||[];
 
 const cases=[
  {cat:'STRATEGY',diff:'INTERMEDIATE',title:'Scale the Battery Business or Protect Margins?',context:'A battery technology company has strong pilot results but limited manufacturing capacity. A large customer offers a multi-year contract that could triple revenue, but requires major capex and aggressive delivery commitments.',facts:[['$45M','Required capex'],['3×','Potential revenue'],['18 mo','Ramp timeline']],prompt:'Should the company accept the contract now, renegotiate the terms, or walk away? Explain the decision framework, key risks, and your recommendation.',challenge:'The customer says the commercial terms are final and will choose a competitor within two weeks. Does your recommendation change?',model:'I would pursue the contract, but only if we can restructure the risk rather than simply accept it. The upside is strategically meaningful: it validates demand, accelerates scale, and can improve our cost position. The constraint is that the current terms place too much execution and capital risk on us. I would focus the negotiation on milestone-based volume commitments, customer support for tooling or capacity, and a phased ramp. If those protections are unavailable, I would be willing to walk away because one contract should not put the company’s balance sheet at risk.'},
@@ -25,6 +27,7 @@ const drills=[
  ['EXECUTIVE','완벽한 예측이 아니라 불확실성 속에서 더 나은 결정을 하는 것이 목표입니다.','The goal is not perfect prediction; it is making better decisions under uncertainty.','decisions under uncertainty'],
  ['EXECUTIVE','세 가지 선택지가 있지만 현재 증거를 기준으로 두 번째 안이 가장 합리적입니다.','We have three viable options. Based on the evidence available today, option two is the most defensible path.','the most defensible path']
 ];
+
 const words=[
  ['TECHNICAL','pronounced fluctuation','뚜렷한 변동','We observed pronounced fluctuations during the second half of the cycle.'],
  ['TECHNICAL','rule out a possibility','가능성을 배제하다','We cannot rule out a sensor-related issue yet.'],
@@ -38,4 +41,43 @@ const words=[
  ['EXECUTIVE','decision under uncertainty','불확실성 속의 의사결정','Leadership often comes down to making good decisions under uncertainty.'],
  ['MBA','capital allocation','자본 배분','This is fundamentally a capital allocation decision.'],
  ['EXECUTIVE','protect the downside','하방 위험을 방어하다','We can pursue the upside while protecting the downside.']
+];
+
+const toeflWords=[
+ ['abundant','풍부한','plentiful','The region receives abundant rainfall, allowing dense vegetation to develop.'],
+ ['accumulate','축적되다, 모으다','build up','Sediment gradually accumulates at the bottom of the lake.'],
+ ['adjacent','인접한','neighboring','The species spread from the island to adjacent coastal regions.'],
+ ['advocate','지지하다, 옹호하다','support','Some researchers advocate a more cautious interpretation of the evidence.'],
+ ['alter','변경하다','modify','A change in temperature can alter the rate of the chemical reaction.'],
+ ['ambiguous','모호한','unclear','The archaeological evidence is ambiguous and supports several interpretations.'],
+ ['anticipate','예상하다','expect','Scientists anticipate that the population will continue to decline.'],
+ ['apparent','명백해 보이는','evident','The apparent stability of the ecosystem can be misleading.'],
+ ['arbitrary','임의적인','random','The boundary was largely arbitrary rather than based on geography.'],
+ ['attain','달성하다','achieve','The insects attain full maturity within several weeks.'],
+ ['coherent','일관성 있는','logical','The theory provides a coherent explanation for the observed pattern.'],
+ ['compelling','설득력 있는','convincing','Researchers found compelling evidence that the climate had changed rapidly.'],
+ ['consecutive','연속적인','successive','The region experienced drought for three consecutive years.'],
+ ['constitute','구성하다','make up','These minerals constitute nearly half of the rock sample.'],
+ ['constrain','제약하다','restrict','Limited resources constrain the growth of the population.'],
+ ['controversial','논란이 많은','disputed','The explanation remains controversial among historians.'],
+ ['decline','감소하다','decrease','The population began to decline after its habitat was reduced.'],
+ ['derive','얻다, 유래하다','obtain','Many medicines are derived from naturally occurring compounds.'],
+ ['detect','감지하다, 발견하다','identify','The instrument can detect extremely small changes in pressure.'],
+ ['diminish','감소시키다, 줄어들다','reduce','The influence of the current diminishes farther from the coast.'],
+ ['distinct','뚜렷이 다른','separate','The two species occupy distinct ecological niches.'],
+ ['eliminate','제거하다','remove','The experiment was designed to eliminate alternative explanations.'],
+ ['emerge','나타나다','appear','New forms of social organization emerged as settlements grew.'],
+ ['empirical','경험적, 실증적인','evidence-based','The hypothesis is supported by empirical observations.'],
+ ['enhance','향상시키다','improve','The adaptation enhances the animal’s ability to survive in cold environments.'],
+ ['fundamental','근본적인','basic','Water availability is a fundamental constraint on plant growth.'],
+ ['inhibit','억제하다','prevent','Low temperatures can inhibit the growth of microorganisms.'],
+ ['inevitable','불가피한','unavoidable','Some degree of erosion is inevitable in exposed landscapes.'],
+ ['notion','개념, 생각','idea','The discovery challenged the traditional notion of how the settlement developed.'],
+ ['plausible','그럴듯한, 타당한','reasonable','Several plausible explanations have been proposed for the decline.'],
+ ['predominant','지배적인, 주된','dominant','Agriculture became the predominant economic activity in the region.'],
+ ['retain','유지하다, 보유하다','keep','Dense soil can retain moisture for long periods.'],
+ ['subsequent','그 이후의','later','Subsequent studies produced similar results.'],
+ ['substantial','상당한','considerable','The project required a substantial investment of time and resources.'],
+ ['trigger','촉발하다','cause','A sudden temperature change can trigger rapid melting.'],
+ ['virtually','사실상, 거의','almost','The species is virtually absent from the northern part of the island.']
 ];

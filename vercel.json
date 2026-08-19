@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/", "destination": "/workspeak/index.html" },
+    { "source": "/style.css", "destination": "/workspeak/style.css" },
+    { "source": "/data.js", "destination": "/workspeak/data.js" },
+    { "source": "/app.js", "destination": "/workspeak/app-vercel.js" },
+    { "source": "/ai.js", "destination": "/workspeak/ai.js" }
+  ],
+  "functions": {
+    "api/analyze.js": { "maxDuration": 30 }
+  }
+}

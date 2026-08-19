@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>WorkSpeak — 커리어 영어 코치</title>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <div class="app">
@@ -15,7 +15,8 @@
       <button data-tab="speak">◉ &nbsp;말하기 코치</button>
       <button data-tab="mba">◇ &nbsp;MBA 케이스</button>
       <button data-tab="drill">▣ &nbsp;10문장 훈련</button>
-      <button data-tab="vocab">◆ &nbsp;단어 · 표현</button>
+      <button data-tab="vocab">◆ &nbsp;업무 단어 · 표현</button>
+      <button data-tab="toefl">A+ &nbsp;TOEFL iBT 단어</button>
       <div class="navSep"></div>
       <button data-tab="report">↗ &nbsp;주간 리포트</button>
     </div>
@@ -24,22 +25,18 @@
 
   <main class="main">
     <section id="home" class="sec on">
-      <div class="hero"><div><div class="eyebrow">이번 주 학습</div><h1>기술 리더에게 필요한 영어를 만들어가세요.</h1><p>실제 업무에서 쓰는 영어, 비즈니스 판단력, 임원급 커뮤니케이션을 함께 연습합니다.</p></div><div class="streak">🔥 <b id="streak">1일</b> 연속</div></div>
+      <div class="hero"><div><div class="eyebrow">이번 주 학습</div><h1>기술 리더에게 필요한 영어를 만들어가세요.</h1><p>실제 업무 영어, MBA 사고방식, 학술 어휘, 임원급 커뮤니케이션을 함께 연습합니다.</p></div><div class="streak">🔥 <b id="streak">1일</b> 연속</div></div>
       <div class="grid">
         <div class="card s3"><div class="metricLabel">이번 주 말하기</div><div class="metric" id="weekCount">0</div><div class="metricHint">완료한 답변</div></div>
         <div class="card s3"><div class="metricLabel">MBA 케이스</div><div class="metric" id="mbaCount">0</div><div class="metricHint">완료한 케이스</div></div>
-        <div class="card s3"><div class="metricLabel">표현 숙련도</div><div class="metric" id="masteredCount">0</div><div class="metricHint">숙련도 80% 이상</div></div>
-        <div class="card s3"><div class="metricLabel">현재 집중 영역</div><div style="font-size:20px;font-weight:900;margin-top:9px" id="focusText">프로페셔널한 명확성</div><div class="metricHint" style="margin-top:5px">최근 학습 결과 기반</div></div>
+        <div class="card s3"><div class="metricLabel">10문장 훈련</div><div class="metric" id="drillCount">0</div><div class="metricHint">이번 주 저장된 답변</div></div>
+        <div class="card s3"><div class="metricLabel">TOEFL 최근 점수</div><div class="metric" id="toeflHomeScore">—</div><div class="metricHint">10문제 테스트</div></div>
 
-        <div class="card s8"><div class="between"><div><h3 class="sectionTitle">커리어 커뮤니케이션 트랙</h3><p class="sectionSub">기술 설명에서 시작해 비즈니스 판단과 임원 커뮤니케이션으로 점차 확장합니다.</p></div><span class="pill">개인 맞춤</span></div>
+        <div class="card s8"><div class="between"><div><h3 class="sectionTitle">커리어 커뮤니케이션 트랙</h3><p class="sectionSub">기술 설명에서 시작해 비즈니스 판단과 임원 커뮤니케이션으로 확장합니다.</p></div><span class="pill">개인 맞춤</span></div>
           <div class="track"><div class="trackStep active"><strong>1 · Engineer</strong><span>기술 설명</span></div><div class="trackStep"><strong>2 · MBA</strong><span>비즈니스 사고</span></div><div class="trackStep"><strong>3 · Leader</strong><span>설득과 영향력</span></div><div class="trackStep"><strong>4 · CEO</strong><span>Executive Presence</span></div></div>
-          <div style="margin-top:17px" class="progress"><i style="width:28%"></i></div><div class="tip" style="margin-top:8px">현재 학습 비중: 기술 40% · Business/MBA 30% · Leadership 30%</div>
+          <div style="margin-top:17px" class="progress"><i style="width:28%"></i></div><div class="tip" style="margin-top:8px">현재 학습 비중: 기술 35% · Business/MBA 30% · Leadership 20% · TOEFL Academic 15%</div>
         </div>
-        <div class="card s4"><h3 class="sectionTitle">오늘의 학습</h3><p class="sectionSub">집중해서 약 15분.</p>
-          <div class="quickTask"><div class="taskIcon">🎙</div><div><b>말하기 상황 1개</b><small>실제 업무 주제를 영어로 설명</small></div></div>
-          <div class="quickTask"><div class="taskIcon">◇</div><div><b>MBA 미니 케이스 1개</b><small>구조화 → 판단 → 방어</small></div></div>
-          <div class="quickTask"><div class="taskIcon">◆</div><div><b>표현 5개</b><small>Executive Vocabulary 강화</small></div></div>
-        </div>
+        <div class="card s4"><h3 class="sectionTitle">현재 집중 영역</h3><div style="font-size:20px;font-weight:900;margin-top:9px" id="focusText">프로페셔널한 명확성</div><p class="sectionSub" style="margin-top:7px">최근 학습 결과를 기반으로 자동 조정됩니다.</p><div class="quickTask"><div class="taskIcon">🎙</div><div><b>말하기 1개</b><small>실제 업무 주제로 답변</small></div></div><div class="quickTask"><div class="taskIcon">A+</div><div><b>TOEFL 단어 5개</b><small>문맥 + 동의어로 학습</small></div></div></div>
         <div class="card s12"><div class="between"><div><h3 class="sectionTitle">저장한 표현 업그레이드</h3><p class="sectionSub">다시 써먹고 싶은 좋은 영어 표현입니다.</p></div><button class="btn soft small" onclick="openTab('speak')">말하기 연습</button></div><div id="savedHome" class="empty">아직 저장한 표현이 없습니다.</div></div>
       </div>
     </section>
@@ -53,37 +50,45 @@
     </section>
 
     <section id="mba" class="sec">
-      <div class="hero"><div><div class="eyebrow">MBA 케이스</div><h1>매니저처럼 생각하고, 임원처럼 말하세요.</h1><p>문제를 구조화하고, 핵심 trade-off를 찾고, 결정을 내린 뒤 짧고 설득력 있게 영어로 recommendation을 말하는 연습입니다.</p></div><button class="btn soft" onclick="nextCase()">새 케이스 ↻</button></div>
+      <div class="hero"><div><div class="eyebrow">MBA 케이스</div><h1>매니저처럼 생각하고, 임원처럼 말하세요.</h1><p>문제를 구조화하고 핵심 trade-off를 찾은 뒤 영어로 recommendation을 제시합니다.</p></div><button class="btn soft" onclick="nextCase()">새 케이스 ↻</button></div>
       <div class="grid">
-        <div class="card s7">
-          <div class="caseTop"><div><div class="caseMeta"><span class="pill" id="caseCategory">STRATEGY</span><span class="pill green" id="caseDifficulty">INTERMEDIATE</span></div><div class="caseTitle" id="caseTitle"></div><p class="sectionSub" id="caseContext"></p></div></div>
-          <div class="caseFacts" id="caseFacts"></div>
-          <div class="casePrompt"><b>당신의 과제</b><div id="casePrompt" style="margin-top:4px"></div></div>
-          <div class="divider"></div><div class="label">이 구조로 말해보세요</div><div class="framework"><div>1. 문제 정의</div><div>2. 핵심 요인</div><div>3. Trade-off</div><div>4. 결정</div><div>5. 제안</div></div>
-        </div>
-        <div class="card s5"><h3 class="sectionTitle">내 답변</h3><p class="sectionSub">60~90초를 목표로 하세요. 외우기보다 생각하면서 영어로 말하는 게 중요합니다.</p><div class="micWrap"><button id="mbaMic" class="mic">🎙</button><div><b>영어로 답변하세요</b><div class="tip">먼저 어떤 결정을 내려야 하는지부터 말해보세요.</div></div></div><div id="mbaSpeech" class="speech">MBA 케이스 답변이 여기에 표시됩니다.</div><div class="row"><button class="btn" onclick="scoreCase()">답변 평가하기</button><button class="btn secondary" onclick="clearMBA()">지우기</button></div></div>
-
+        <div class="card s7"><div class="caseMeta"><span class="pill" id="caseCategory"></span><span class="pill green" id="caseDifficulty"></span></div><div class="caseTitle" id="caseTitle"></div><p class="sectionSub" id="caseContext"></p><div class="caseFacts" id="caseFacts"></div><div class="casePrompt"><b>당신의 과제</b><div id="casePrompt" style="margin-top:4px"></div></div><div class="divider"></div><div class="label">이 구조로 말해보세요</div><div class="framework"><div>1. 문제 정의</div><div>2. 핵심 요인</div><div>3. Trade-off</div><div>4. 결정</div><div>5. 제안</div></div></div>
+        <div class="card s5"><h3 class="sectionTitle">내 답변</h3><p class="sectionSub">60~90초를 목표로 영어로 생각하면서 말하세요.</p><div class="micWrap"><button id="mbaMic" class="mic">🎙</button><div><b>영어로 답변하세요</b><div class="tip">결론보다 구조와 판단 근거도 중요합니다.</div></div></div><div id="mbaSpeech" class="speech">MBA 케이스 답변이 여기에 표시됩니다.</div><div class="row"><button class="btn" onclick="scoreCase()">답변 평가하기</button><button class="btn secondary" onclick="clearMBA()">지우기</button></div></div>
         <div class="card s12" id="mbaFeedbackCard" style="display:none"><div class="between"><div><h3 class="sectionTitle">케이스 피드백</h3><p class="sectionSub">영어 표현과 비즈니스 사고를 따로 평가합니다.</p></div><div id="mbaOverall" class="scoreBadge">—</div></div><div class="rubric"><div class="r"><div class="metricLabel">영어 표현</div><b id="rEnglish">—</b><span>명확성 · 자연스러움</span></div><div class="r"><div class="metricLabel">구조화</div><b id="rStructure">—</b><span>논리적인 전개</span></div><div class="r"><div class="metricLabel">비즈니스 판단</div><b id="rJudgment">—</b><span>Trade-off · 의사결정</span></div><div class="r"><div class="metricLabel">Executive Presence</div><b id="rExec">—</b><span>간결함 · 자신감</span></div></div><div class="grid" style="margin-top:16px"><div class="s6"><b>잘한 점</b><div id="mbaStrong" class="callout" style="margin-top:8px"></div></div><div class="s6"><b>더 좋아질 점</b><div id="mbaImprove" class="callout" style="margin-top:8px"></div></div></div><div class="divider"></div><b>면접관의 반론 질문</b><div id="mbaChallenge" class="challenge" style="margin-top:8px"></div><div style="margin-top:13px" class="row"><button class="btn soft" onclick="speakChallenge()">🔊 질문 듣기</button><button class="btn secondary" onclick="showModel()">CEO 스타일 답변 보기</button></div><div id="modelWrap" style="display:none;margin-top:14px"><b>CEO 스타일 Recommendation</b><div id="mbaModel" class="modelAnswer" style="margin-top:8px"></div></div></div>
       </div>
     </section>
 
     <section id="drill" class="sec">
-      <div class="hero"><div><div class="eyebrow">10문장 훈련</div><h1>좋은 표현을 내 영어로 자동화하세요.</h1><p>정답을 외우기보다 같은 의미를 자신의 영어로 직접 말하는 훈련입니다.</p></div></div>
-      <div class="grid"><div class="card s6"><div class="metricLabel">문장 <span id="drillN">1</span>/10 · <span id="drillCat">TECHNICAL</span></div><p class="quizQ" id="drillQ"></p><div class="micWrap"><button id="drillMic" class="mic">🎙</button><div><b>영어로 말해보세요</b></div></div><div id="drillSpeech" class="speech">영어 답변을 말해보세요.</div><div class="row"><button class="btn" onclick="checkDrill()">정답 확인</button><button class="btn secondary" onclick="nextDrill()">다음 →</button></div></div><div class="card s6"><h3 class="sectionTitle">추천 답변</h3><div id="drillRef" class="callout">먼저 문장에 답해보세요.</div><div class="divider"></div><div class="label">유용한 표현</div><div class="word" id="drillPhrase">—</div><p class="tip">정답과 단어 하나하나 똑같을 필요는 없습니다.</p></div></div>
+      <div class="hero"><div><div class="eyebrow">10문장 훈련</div><h1>내가 말한 답변을 저장하고 다시 고쳐보세요.</h1><p>각 답변은 자동 저장되며, 내가 말한 영어와 더 자연스러운 표현, 추천 답변을 나중에 다시 비교할 수 있습니다.</p></div></div>
+      <div class="grid">
+        <div class="card s6"><div class="metricLabel">문장 <span id="drillN">1</span>/10 · <span id="drillCat">TECHNICAL</span></div><p class="quizQ" id="drillQ"></p><div class="micWrap"><button id="drillMic" class="mic">🎙</button><div><b>영어로 말해보세요</b><div class="tip">정답을 외우지 말고 본인의 표현으로 답하세요.</div></div></div><div id="drillSpeech" class="speech">영어 답변을 말해보세요.</div><div class="row"><button class="btn" onclick="checkDrill()">답변 확인 · 저장</button><button class="btn secondary" onclick="nextDrill()">다음 →</button></div></div>
+        <div class="card s6"><h3 class="sectionTitle">답변 비교</h3><p class="sectionSub">내 영어를 어떻게 다듬을 수 있는지 비교합니다.</p><div class="compare"><div class="compareBox"><h4>내 답변</h4><div id="drillMine">—</div></div><div class="compareBox"><h4>더 자연스럽게</h4><div id="drillNatural">—</div></div><div class="compareBox"><h4>추천 답변</h4><div id="drillRef">먼저 답해보세요.</div></div></div><div class="divider"></div><div class="label">유용한 표현</div><div class="word" id="drillPhrase">—</div><p id="drillWhy" class="tip">답변 후 표현을 어떻게 고칠 수 있는지 설명해드립니다.</p></div>
+        <div class="card s12"><div class="between"><div><h3 class="sectionTitle">내 10문장 답변 기록</h3><p class="sectionSub">최근에 말했던 문장과 수정된 표현을 다시 복습할 수 있습니다.</p></div><span class="pill" id="drillHistoryCount">0개 저장</span></div><div id="drillHistory" class="empty">아직 저장된 답변이 없습니다.</div></div>
+      </div>
     </section>
 
     <section id="vocab" class="sec">
-      <div class="hero"><div><div class="eyebrow">단어 · 표현</div><h1>실제로 써먹을 수 있는 영어를 배우세요.</h1><p>Technical, MBA, Leadership, Executive 상황에서 자주 쓰는 표현을 문맥 속에서 익힙니다.</p></div></div>
+      <div class="hero"><div><div class="eyebrow">업무 단어 · 표현</div><h1>실제로 써먹을 수 있는 영어를 배우세요.</h1><p>Technical, MBA, Leadership, Executive 상황에서 자주 쓰는 표현을 문맥 속에서 익힙니다.</p></div></div>
       <div class="grid"><div class="card s6"><span class="pill" id="wordCat"></span><div class="word" id="wordText" style="margin:12px 0 6px"></div><p id="wordMeaning"></p><div class="callout" id="wordExample"></div><div class="row" style="margin-top:16px"><button class="btn secondary" onclick="rateWord(-1)">다시 보기</button><button class="btn" onclick="rateWord(1)">알겠어요</button></div></div><div class="card s6"><h3 class="sectionTitle">내 숙련도</h3><p class="sectionSub">충분히 익힌 표현은 주간 복습 빈도가 줄어듭니다.</p><div id="bank"></div></div></div>
     </section>
 
+    <section id="toefl" class="sec">
+      <div class="hero"><div><div class="eyebrow">TOEFL iBT Academic Vocabulary</div><h1>Reading과 Listening에 필요한 학술 어휘를 쌓으세요.</h1><p>뜻만 외우지 않고 동의어와 학술 문맥까지 함께 익힌 뒤 매주 10문제 테스트로 확인합니다.</p></div><button class="btn soft" onclick="startToeflQuiz()">10문제 테스트 시작</button></div>
+      <div class="grid">
+        <div class="card s6"><div class="between"><span class="pill">ACADEMIC</span><span class="tip" id="toeflMasteryText">숙련도 40%</span></div><div class="word" id="toeflWord" style="margin:14px 0 7px"></div><div id="toeflMeaning" style="font-size:17px;font-weight:800"></div><div class="divider"></div><div class="label">동의어</div><div id="toeflSynonym" class="callout"></div><div class="label" style="margin-top:15px">TOEFL 스타일 문맥 예문</div><div id="toeflExample" class="callout"></div><div class="row" style="margin-top:16px"><button class="btn secondary" onclick="rateToefl(-1)">다시 보기</button><button class="btn" onclick="rateToefl(1)">알겠어요</button></div></div>
+        <div class="card s6"><h3 class="sectionTitle">TOEFL 단어 진도</h3><p class="sectionSub">틀린 단어와 숙련도가 낮은 단어를 더 자주 복습합니다.</p><div id="toeflBank"></div></div>
+        <div class="card s12" id="toeflQuizCard" style="display:none"><div class="between"><div><h3 class="sectionTitle">이번 주 10문제 테스트</h3><p class="sectionSub">가장 가까운 뜻을 고르세요.</p></div><span class="pill"><span id="toeflQuizN">1</span>/10</span></div><div class="quizQ" id="toeflQuizWord"></div><div id="toeflChoices" class="choiceGrid"></div><div id="toeflQuizFeedback" class="tip" style="margin-top:12px"></div></div>
+        <div class="card s12"><div class="between"><div><h3 class="sectionTitle">최근 TOEFL 테스트</h3><p class="sectionSub">매주 점수와 틀린 단어를 확인합니다.</p></div><span class="pill" id="toeflLastScore">아직 테스트 없음</span></div><div id="toeflTestHistory" class="empty">첫 10문제 테스트를 시작해보세요.</div></div>
+      </div>
+    </section>
+
     <section id="report" class="sec">
-      <div class="hero"><div><div class="eyebrow">주간 리포트</div><h1>이번 주 약점이 다음 주 학습 내용이 됩니다.</h1><p>영어 전달력과 MBA/비즈니스 사고를 함께 추적합니다.</p></div></div>
-      <div class="grid"><div class="card s3"><div class="metricLabel">말하기 평균</div><div class="metric" id="avgSpeak">—</div></div><div class="card s3"><div class="metricLabel">MBA 평균</div><div class="metric" id="avgMBA">—</div></div><div class="card s3"><div class="metricLabel">총 답변 수</div><div class="metric" id="totalResponses">0</div></div><div class="card s3"><div class="metricLabel">저장한 표현</div><div class="metric" id="savedCount">0</div></div><div class="card s7"><h3 class="sectionTitle">최근 점수 추세</h3><p class="sectionSub">말하기와 MBA 케이스를 함께 표시합니다.</p><div class="trend" id="trend"></div></div><div class="card s5"><h3 class="sectionTitle">반복되는 약점</h3><p class="sectionSub">다음 주에 의도적으로 연습할 부분입니다.</p><div id="patterns" class="empty">아직 데이터가 없습니다.</div></div><div class="card s12"><h3 class="sectionTitle">다음 주 추천 학습</h3><div id="plan" class="callout">먼저 몇 개의 연습을 완료해보세요.</div></div></div>
+      <div class="hero"><div><div class="eyebrow">주간 리포트</div><h1>이번 주 약점이 다음 주 학습 내용이 됩니다.</h1><p>영어 전달력, MBA 사고, 문장 훈련, TOEFL 단어를 함께 추적합니다.</p></div></div>
+      <div class="grid"><div class="card s3"><div class="metricLabel">말하기 평균</div><div class="metric" id="avgSpeak">—</div></div><div class="card s3"><div class="metricLabel">MBA 평균</div><div class="metric" id="avgMBA">—</div></div><div class="card s3"><div class="metricLabel">10문장 답변</div><div class="metric" id="reportDrills">0</div></div><div class="card s3"><div class="metricLabel">TOEFL 최근 점수</div><div class="metric" id="reportToefl">—</div></div><div class="card s7"><h3 class="sectionTitle">최근 점수 추세</h3><p class="sectionSub">말하기와 MBA 케이스 점수를 함께 표시합니다.</p><div class="trend" id="trend"></div></div><div class="card s5"><h3 class="sectionTitle">반복되는 약점</h3><p class="sectionSub">다음 주에 의도적으로 연습할 부분입니다.</p><div id="patterns" class="empty">아직 데이터가 없습니다.</div></div><div class="card s12"><h3 class="sectionTitle">다음 주 추천 학습</h3><div id="plan" class="callout">먼저 몇 개의 연습을 완료해보세요.</div></div></div>
     </section>
   </main>
 </div>
-<script src="data.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="data.js?v=4"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

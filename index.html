@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WorkSpeak — AI 커리어 영어 코치</title>
+<style>
+html,body{margin:0;width:100%;height:100%;background:#f5f7fb}iframe{display:block;width:100%;height:100%;border:0}
+</style>
+</head>
+<body>
+<iframe id="app" src="/workspeak/index.html?v=ai5" allow="microphone" title="WorkSpeak"></iframe>
+<script>
+const frame=document.getElementById('app');
+frame.addEventListener('load',()=>{
+  try{
+    const d=frame.contentDocument;
+    const typing=d.createElement('script');typing.src='/workspeak/typing-override.js?v=5';d.body.appendChild(typing);
+    const ai=d.createElement('script');ai.src='/workspeak/ai.js?v=5';d.body.appendChild(ai);
+  }catch(e){console.error('WorkSpeak bootstrap failed',e)}
+});
+</script>
+</body>
+</html>

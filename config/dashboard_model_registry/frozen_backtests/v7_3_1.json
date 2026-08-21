@@ -1,0 +1,393 @@
+{
+  "model_version": "V7.3.1",
+  "universe_version": "U001",
+  "status": "FROZEN",
+  "frozen_at": "2026-08-20",
+  "supersedes": {
+    "model_version": "V7.3",
+    "frozen_at": "2026-08-12",
+    "ROI": 213.7207929250311,
+    "reason": "filing pipeline repaired: Q4 derivation in TTM sums, split-adjusted share counts, and two KeyError crash paths in the display-only valuation block"
+  },
+  "period": {
+    "start": "2024-01-02",
+    "end": "2026-08-12"
+  },
+  "universe": [
+    "AAPL",
+    "AMZN",
+    "ARRY",
+    "AVGO",
+    "CPNG",
+    "CRSP",
+    "DIS",
+    "EH",
+    "GOOG",
+    "ILMN",
+    "JNJ",
+    "JPM",
+    "LLY",
+    "MCO",
+    "META",
+    "MSFT",
+    "NKE",
+    "NVDA",
+    "NVO",
+    "PANW",
+    "PLTR",
+    "PLUG",
+    "SNOW",
+    "SPCX",
+    "SPGI",
+    "TEVA",
+    "TSLA",
+    "U",
+    "UNH",
+    "V",
+    "WMT"
+  ],
+  "summary": {
+    "StartDate": "2024-01-02 00:00:00",
+    "EndDate": "2026-08-12 00:00:00",
+    "InitialCapital": 100000.0,
+    "TotalInjected": 100000.0,
+    "FinalValue": 290014.7308867661,
+    "ROI": 190.01473088676613,
+    "CAGR": 50.39336401632213,
+    "MaxDrawdown": -31.584352686362106,
+    "Sharpe": 1.4640996430200215,
+    "TurnoverMultiple": 19.519172659962674,
+    "AnnualizedTurnover": 7.480984065111612,
+    "TickerTrades": 216,
+    "Rebalances": 40
+  },
+  "ticker_summary": [
+    {
+      "ticker": "PLTR",
+      "completed_trades": 2,
+      "still_held": true,
+      "net_pnl": 61794.64773895691,
+      "gross_buys": 96747.34047182841,
+      "net_sales": 158541.98821078532,
+      "ending_value": 0.0,
+      "recovered_and_held": 158541.98821078532,
+      "aggregate_roi_pct": 63.87219270068796,
+      "average_buy_price": 74.87647677972308,
+      "trades": [
+        {
+          "entry_date": "2024-09-27",
+          "exit_date": "2026-01-30",
+          "entry_price": 36.84000015258789,
+          "exit_price": 146.58999633789062,
+          "roi_pct": 2.9790986897591845,
+          "exit_reason": "PROFITABLE_ROTATION",
+          "hold_days": 490
+        },
+        {
+          "entry_date": "2026-02-27",
+          "exit_date": "2026-04-10",
+          "entry_price": 137.19000244140625,
+          "exit_price": 128.05999755859375,
+          "roi_pct": -0.06655007449768013,
+          "exit_reason": "CONVICTION_BREAKDOWN",
+          "hold_days": 42
+        }
+      ]
+    },
+    {
+      "ticker": "NVDA",
+      "completed_trades": 0,
+      "still_held": true,
+      "net_pnl": 55573.78184496654,
+      "gross_buys": 59086.87590037061,
+      "net_sales": 56337.30400133258,
+      "ending_value": 58323.35374400453,
+      "recovered_and_held": 114660.65774533711,
+      "aggregate_roi_pct": 94.05435809243374,
+      "average_buy_price": 86.94035124736767,
+      "trades": []
+    },
+    {
+      "ticker": "AVGO",
+      "completed_trades": 3,
+      "still_held": true,
+      "net_pnl": 52109.842767158865,
+      "gross_buys": 171410.72562247366,
+      "net_sales": 166866.51389587362,
+      "ending_value": 56654.054493758915,
+      "recovered_and_held": 223520.56838963254,
+      "aggregate_roi_pct": 30.400572996773278,
+      "average_buy_price": 234.84416837447966,
+      "trades": [
+        {
+          "entry_date": "2024-01-05",
+          "exit_date": "2024-09-06",
+          "entry_price": 104.9280014038086,
+          "exit_price": 137.0,
+          "roi_pct": 0.3056571950967064,
+          "exit_reason": "PROFITABLE_ROTATION",
+          "hold_days": 245
+        },
+        {
+          "entry_date": "2025-05-16",
+          "exit_date": "2025-12-26",
+          "entry_price": 228.6100006103516,
+          "exit_price": 352.1300048828125,
+          "roi_pct": 0.5403088401324638,
+          "exit_reason": "PROFITABLE_ROTATION",
+          "hold_days": 224
+        },
+        {
+          "entry_date": "2026-03-27",
+          "exit_date": "2026-06-05",
+          "entry_price": 300.67999267578125,
+          "exit_price": 385.7300109863281,
+          "roi_pct": 0.2828589210531711,
+          "exit_reason": "PROFITABLE_ROTATION",
+          "hold_days": 70
+        }
+      ]
+    },
+    {
+      "ticker": "GOOG",
+      "completed_trades": 2,
+      "still_held": false,
+      "net_pnl": 20879.34585019012,
+      "gross_buys": 94942.20157284204,
+      "net_sales": 115821.54742303214,
+      "ending_value": 0.0,
+      "recovered_and_held": 115821.54742303214,
+      "aggregate_roi_pct": 21.991638601482123,
+      "average_buy_price": 215.85335539331587,
+      "trades": [
+        {
+          "entry_date": "2024-05-03",
+          "exit_date": "2024-12-06",
+          "entry_price": 168.99000549316406,
+          "exit_price": 176.49000549316406,
+          "roi_pct": 0.044381322896065445,
+          "exit_reason": "PROFITABLE_ROTATION",
+          "hold_days": 217
+        },
+        {
+          "entry_date": "2025-10-03",
+          "exit_date": "2026-06-26",
+          "entry_price": 246.4499969482422,
+          "exit_price": 334.69000244140625,
+          "roi_pct": 0.3580442547609186,
+          "exit_reason": "PROFITABLE_ROTATION",
+          "hold_days": 266
+        }
+      ]
+    },
+    {
+      "ticker": "PANW",
+      "completed_trades": 0,
+      "still_held": true,
+      "net_pnl": 20348.509253604185,
+      "gross_buys": 53004.99681612804,
+      "net_sales": 11767.704672218788,
+      "ending_value": 61585.801397513445,
+      "recovered_and_held": 73353.50606973223,
+      "aggregate_roi_pct": 38.389794313529066,
+      "average_buy_price": 269.6300048828125,
+      "trades": []
+    },
+    {
+      "ticker": "META",
+      "completed_trades": 2,
+      "still_held": true,
+      "net_pnl": 8853.642688698968,
+      "gross_buys": 151135.6211130371,
+      "net_sales": 103813.611267373,
+      "ending_value": 56175.652534363115,
+      "recovered_and_held": 159989.26380173612,
+      "aggregate_roi_pct": 5.8580780781502195,
+      "average_buy_price": 564.7710382173033,
+      "trades": [
+        {
+          "entry_date": "2024-01-05",
+          "exit_date": "2025-10-03",
+          "entry_price": 351.95001220703125,
+          "exit_price": 710.5599975585938,
+          "roi_pct": 1.0189230655307195,
+          "exit_reason": "PROFITABLE_ROTATION",
+          "hold_days": 637
+        },
+        {
+          "entry_date": "2026-02-27",
+          "exit_date": "2026-03-27",
+          "entry_price": 648.1799926757812,
+          "exit_price": 525.719970703125,
+          "roi_pct": -0.18892903723720855,
+          "exit_reason": "CONVICTION_BREAKDOWN",
+          "hold_days": 28
+        }
+      ]
+    },
+    {
+      "ticker": "SNOW",
+      "completed_trades": 1,
+      "still_held": false,
+      "net_pnl": 7156.862672549247,
+      "gross_buys": 42483.265890274604,
+      "net_sales": 49640.12856282386,
+      "ending_value": 0.0,
+      "recovered_and_held": 49640.12856282386,
+      "aggregate_roi_pct": 16.84631000600081,
+      "average_buy_price": 180.10898062827937,
+      "trades": [
+        {
+          "entry_date": "2024-12-06",
+          "exit_date": "2025-06-06",
+          "entry_price": 183.63999938964844,
+          "exit_price": 210.83999633789065,
+          "roi_pct": 0.1481158627676158,
+          "exit_reason": "PROFITABLE_ROTATION",
+          "hold_days": 182
+        }
+      ]
+    },
+    {
+      "ticker": "AAPL",
+      "completed_trades": 1,
+      "still_held": false,
+      "net_pnl": 4350.856700134997,
+      "gross_buys": 67942.19588691762,
+      "net_sales": 15017.183869926528,
+      "ending_value": 57275.8687171261,
+      "recovered_and_held": 72293.05258705263,
+      "aggregate_roi_pct": 6.403762261932977,
+      "average_buy_price": 278.60512646789437,
+      "trades": [
+        {
+          "entry_date": "2026-02-06",
+          "exit_date": "2026-08-12",
+          "entry_price": 278.1199951171875,
+          "exit_price": 302.25,
+          "roi_pct": 0.08676112939181224,
+          "exit_reason": "PROFITABLE_ROTATION",
+          "hold_days": 187
+        }
+      ]
+    },
+    {
+      "ticker": "MCO",
+      "completed_trades": 1,
+      "still_held": false,
+      "net_pnl": -142.2662276128857,
+      "gross_buys": 45929.38916296046,
+      "net_sales": 45787.12293534758,
+      "ending_value": 0.0,
+      "recovered_and_held": 45787.12293534758,
+      "aggregate_roi_pct": -0.3097498795555764,
+      "average_buy_price": 478.2582870628838,
+      "trades": [
+        {
+          "entry_date": "2024-09-06",
+          "exit_date": "2025-05-16",
+          "entry_price": 475.4400024414063,
+          "exit_price": 488.8999938964844,
+          "roi_pct": 0.028310599415195092,
+          "exit_reason": "PROFITABLE_ROTATION",
+          "hold_days": 252
+        }
+      ]
+    },
+    {
+      "ticker": "MSFT",
+      "completed_trades": 2,
+      "still_held": false,
+      "net_pnl": -7330.492051525933,
+      "gross_buys": 90737.18374261449,
+      "net_sales": 83406.69169108856,
+      "ending_value": 0.0,
+      "recovered_and_held": 83406.69169108856,
+      "aggregate_roi_pct": -8.078818130745201,
+      "average_buy_price": 442.1314564465365,
+      "trades": [
+        {
+          "entry_date": "2024-01-05",
+          "exit_date": "2024-05-03",
+          "entry_price": 367.75,
+          "exit_price": 406.6600036621094,
+          "roi_pct": 0.10580558439730625,
+          "exit_reason": "PROFITABLE_ROTATION",
+          "hold_days": 119
+        },
+        {
+          "entry_date": "2025-06-06",
+          "exit_date": "2026-02-06",
+          "entry_price": 470.3800048828125,
+          "exit_price": 401.1400146484375,
+          "roi_pct": -0.14720011377104558,
+          "exit_reason": "CONVICTION_BREAKDOWN",
+          "hold_days": 245
+        }
+      ]
+    },
+    {
+      "ticker": "ARRY",
+      "completed_trades": 1,
+      "still_held": false,
+      "net_pnl": -12260.052681151235,
+      "gross_buys": 61541.10257979008,
+      "net_sales": 49281.04989863885,
+      "ending_value": 0.0,
+      "recovered_and_held": 49281.04989863885,
+      "aggregate_roi_pct": -19.921730627519494,
+      "average_buy_price": 10.09613891227919,
+      "trades": [
+        {
+          "entry_date": "2025-12-26",
+          "exit_date": "2026-02-27",
+          "entry_price": 10.229999542236328,
+          "exit_price": 7.579999923706055,
+          "roi_pct": -0.25904200753766315,
+          "exit_reason": "UNIVERSE_EXIT",
+          "hold_days": 63
+        }
+      ]
+    },
+    {
+      "ticker": "NVO",
+      "completed_trades": 2,
+      "still_held": false,
+      "net_pnl": -21319.947669203633,
+      "gross_buys": 90889.28174921508,
+      "net_sales": 69569.33408001145,
+      "ending_value": 0.0,
+      "recovered_and_held": 69569.33408001145,
+      "aggregate_roi_pct": -23.457053745930544,
+      "average_buy_price": 66.38289793670597,
+      "trades": [
+        {
+          "entry_date": "2024-01-05",
+          "exit_date": "2024-09-27",
+          "entry_price": 105.9800033569336,
+          "exit_price": 120.76000213623048,
+          "roi_pct": 0.13946025958801722,
+          "exit_reason": "PROFITABLE_ROTATION",
+          "hold_days": 266
+        },
+        {
+          "entry_date": "2026-01-30",
+          "exit_date": "2026-02-27",
+          "entry_price": 59.43000030517578,
+          "exit_price": 37.45000076293945,
+          "roi_pct": -0.3698468690790513,
+          "exit_reason": "HARD_STOP",
+          "hold_days": 28
+        }
+      ]
+    }
+  ],
+  "git_commit": "ad52c6352ed5436b1f74e350072141a519696d37",
+  "provenance": {
+    "recomputed_by": "research/challenger_race_v1/freeze_v7_3_1.py",
+    "not_via": "scripts/dashboard/freeze_backtest.py (that script reads the live latest_today.json; this recomputes the backtest directly)",
+    "signal_dates": "frozen_signal_days shim -- the post-freeze production helper drops an incomplete current week and lands on a different weekly grid",
+    "working_tree_uncommitted": true,
+    "tests": "pytest tests/ (excluding untracked, pre-broken tests/tesla_v3) = 513 passed at freeze time"
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "active_model_version": "V7.3.1",
+  "model_version_history": [
+    {
+      "model_version": "V7.3",
+      "frozen_at": "2026-08-12",
+      "ROI": 213.7207929250311,
+      "status": "SUPERSEDED",
+      "note": "frozen against a filing pipeline that skipped Q4 in every trailing-twelve-month sum (most US filers report Q4 only inside the annual 10-K) and read a 10-for-1 stock split as ~1000% share dilution"
+    },
+    {
+      "model_version": "V7.3.1",
+      "frozen_at": "2026-08-20",
+      "ROI": 190.0147,
+      "status": "ACTIVE",
+      "note": "identical params, universe and execution policy; recomputed on the repaired filing pipeline. Selection differs on 29 of 138 weekly signal dates; the P&L gap is concentrated in PLTR (-14.4k) and ILMN (-7.8k, no longer selected at all)"
+    }
+  ],
+  "forward_ledger_start": "2026-08-12",
+  "universe_changes": [
+    {
+      "date": "2026-08-12",
+      "snapshot": "2026-08-12.json",
+      "universe_version": "U001",
+      "added": [],
+      "removed": [],
+      "note": "forward ledger baseline"
+    },
+    {
+      "date": "2026-08-13",
+      "snapshot": "2026-08-13.json",
+      "universe_version": "U002",
+      "added": [
+        "COST",
+        "UBER",
+        "INTC"
+      ],
+      "removed": [
+        "JNJ",
+        "JPM",
+        "V"
+      ],
+      "note": "COST/UBER/INTC in, JNJ/JPM/V out -- forward universe only, frozen backtest untouched"
+    },
+    {
+      "date": "2026-08-14",
+      "snapshot": "2026-08-14.json",
+      "universe_version": "U003",
+      "added": [
+        "AEP",
+        "INSM",
+        "MLM",
+        "NTRA",
+        "VST"
+      ],
+      "removed": [
+        "NKE"
+      ],
+      "note": "사용자 요청으로 종목 제외"
+    }
+  ]
+}

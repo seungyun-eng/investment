@@ -1,0 +1,3 @@
+# regenerable panel caches and intermediate pickles -- rebuilt by common.load_panel()
+# and run_long.build_long_panel(); 100+ MB and derived entirely from tracked inputs.
+*.pkl

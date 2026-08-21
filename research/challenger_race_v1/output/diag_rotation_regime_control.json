@@ -1,0 +1,11 @@
+{
+  "shuffle_draws": 500,
+  "real_full_Sharpe": 0.95,
+  "shuffle_Sharpe_mean": 1.3345306571615405,
+  "shuffle_Sharpe_p95": 1.5516561855912974,
+  "real_Sharpe_percentile": 1.7999999999999998,
+  "real_2026_ROI": -8.8,
+  "shuffle_2026_ROI_mean": -0.4790372753117091,
+  "shuffle_2026_ROI_p95": 20.61950190264564,
+  "real_2026_percentile": 4.6
+}

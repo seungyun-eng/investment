@@ -1,0 +1,3 @@
+variant,frozen_weeks,ROI,CAGR,MDD,Sharpe,Calmar,turnover,2024,2025,2026_OOS
+baseline (never freeze),0,190.01,50.39,-31.58,1.46,1.6,7.5,76.7,58.1,-3.0
+IC-gated freeze,16,89.8,27.84,-34.87,0.95,0.8,4.8,49.0,30.8,-8.8

@@ -1,0 +1,4 @@
+variant,names,ROI,CAGR,MDD,Sharpe,Calmar
+actual (model entries and exits),10,-3.0,-4.89,-29.56,-0.04,-0.17
+"hold_all (same names, bought day 1)",10,11.14,18.98,-21.79,0.81,0.87
+"hold_from_first (bought when first picked, never sold)",10,4.35,7.26,-18.84,0.43,0.39

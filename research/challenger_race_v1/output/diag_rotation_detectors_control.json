@@ -1,0 +1,38 @@
+{
+  "ic_negative": {
+    "frozen_weeks": 16,
+    "real_Sharpe": 0.95,
+    "shuffle_Sharpe_mean": 1.335,
+    "real_Sharpe_percentile": 1.8,
+    "real_2026_ROI": -8.8,
+    "shuffle_2026_mean": -0.48,
+    "real_2026_percentile": 4.6
+  },
+  "spy_bear": {
+    "frozen_weeks": 4,
+    "real_Sharpe": 1.44,
+    "shuffle_Sharpe_mean": 1.435,
+    "real_Sharpe_percentile": 32.6,
+    "real_2026_ROI": -4.0,
+    "shuffle_2026_mean": -2.76,
+    "real_2026_percentile": 13.8
+  },
+  "spy_highvol": {
+    "frozen_weeks": 7,
+    "real_Sharpe": 1.4,
+    "shuffle_Sharpe_mean": 1.416,
+    "real_Sharpe_percentile": 30.0,
+    "real_2026_ROI": 0.0,
+    "shuffle_2026_mean": -2.51,
+    "real_2026_percentile": 82.6
+  },
+  "low_dispersion": {
+    "frozen_weeks": 18,
+    "real_Sharpe": 1.23,
+    "shuffle_Sharpe_mean": 1.292,
+    "real_Sharpe_percentile": 36.6,
+    "real_2026_ROI": 0.8,
+    "shuffle_2026_mean": -0.87,
+    "real_2026_percentile": 74.6
+  }
+}

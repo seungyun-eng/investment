@@ -53,6 +53,10 @@ STANDARD_CONCEPTS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     "NetIncome": (
         ("us-gaap", "NetIncomeLoss"),
+        # Some GAAP filers (e.g. AVGO) tag bottom-line net income under
+        # ProfitLoss instead of NetIncomeLoss -- without this fallback their
+        # NetIncome (and everything derived from it) is silently mostly-NaN.
+        ("us-gaap", "ProfitLoss"),
         ("ifrs-full", "ProfitLoss"),
     ),
     "OperatingCashFlow": (
@@ -61,7 +65,16 @@ STANDARD_CONCEPTS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     "CapitalExpenditures": (
         ("us-gaap", "PaymentsToAcquirePropertyPlantAndEquipment"),
+        # SEC filers use these standard US-GAAP alternatives for the same
+        # cash-flow statement concept. AMZN and V use ProductiveAssets;
+        # LLY uses OtherPropertyPlantAndEquipment in recent filings.
+        ("us-gaap", "PaymentsToAcquireProductiveAssets"),
+        ("us-gaap", "PaymentsToAcquireOtherPropertyPlantAndEquipment"),
         ("ifrs-full", "PurchaseOfPropertyPlantAndEquipment"),
+        (
+            "ifrs-full",
+            "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities",
+        ),
     ),
     "Cash": (
         ("us-gaap", "CashAndCashEquivalentsAtCarryingValue"),
@@ -86,16 +99,29 @@ STANDARD_CONCEPTS: dict[str, tuple[tuple[str, str], ...]] = {
     "DebtCurrent": (
         ("us-gaap", "LongTermDebtAndFinanceLeaseObligationsCurrent"),
         ("us-gaap", "LongTermDebtCurrent"),
+        ("us-gaap", "DebtCurrent"),
+        ("us-gaap", "ConvertibleDebtCurrent"),
         ("ifrs-full", "CurrentBorrowings"),
+        ("ifrs-full", "CurrentPortionOfLongtermBorrowings"),
+        ("ifrs-full", "ShorttermBorrowings"),
     ),
     "DebtNoncurrent": (
         ("us-gaap", "LongTermDebtAndFinanceLeaseObligationsNoncurrent"),
         ("us-gaap", "LongTermDebtNoncurrent"),
+        ("us-gaap", "ConvertibleDebtNoncurrent"),
+        ("us-gaap", "LongTermDebt"),
         ("ifrs-full", "NoncurrentBorrowings"),
+        ("ifrs-full", "LongtermBorrowings"),
     ),
     "InterestExpense": (
+        # This is the SEC taxonomy's exact spelling (lowercase "o" in
+        # Nonoperating). Keep the legacy variant below for cached/vendor
+        # payloads that may have normalized the name differently.
+        ("us-gaap", "InterestExpenseNonoperating"),
         ("us-gaap", "InterestExpenseNonOperating"),
         ("us-gaap", "InterestExpense"),
+        ("us-gaap", "InterestExpenseDebt"),
+        ("us-gaap", "InterestExpenseBorrowings"),
         ("ifrs-full", "FinanceCosts"),
     ),
     "ResearchAndDevelopment": (
@@ -109,10 +135,55 @@ STANDARD_CONCEPTS: dict[str, tuple[tuple[str, str], ...]] = {
     "SharesOutstanding": (
         ("dei", "EntityCommonStockSharesOutstanding"),
         ("us-gaap", "CommonStockSharesOutstanding"),
+        # Some issuers do not publish a consolidated point-in-time share fact
+        # because the XBRL is split by share class. For YoY dilution/buyback
+        # measurement, basic weighted-average shares are the closest standard
+        # non-diluted fallback. The selected basis is exposed below rather than
+        # silently mixing the two definitions.
+        ("us-gaap", "WeightedAverageNumberOfSharesOutstandingBasic"),
+        ("us-gaap", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted"),
+        ("ifrs-full", "WeightedAverageShares"),
     ),
     "DilutedShares": (
         ("us-gaap", "WeightedAverageNumberOfDilutedSharesOutstanding"),
         ("ifrs-full", "DilutedWeightedAverageShares"),
+    ),
+    "DepreciationAndAmortization": (
+        ("us-gaap", "DepreciationDepletionAndAmortization"),
+        ("us-gaap", "DepreciationAmortizationAndAccretionNet"),
+        ("us-gaap", "DepreciationAndAmortization"),
+        ("ifrs-full", "DepreciationAndAmortisationExpense"),
+    ),
+    # Many large issuers (AVGO, MSFT, GOOG, JPM, ...) never report a single
+    # combined D&A concept and instead split depreciation and intangible
+    # amortization into two separate line items -- both are needed to
+    # reconstruct EBITDA for those companies (see add_derived_filing_metrics).
+    "Depreciation": (
+        ("us-gaap", "Depreciation"),
+        ("us-gaap", "DepreciationNonproduction"),
+    ),
+    "AmortizationOfIntangibleAssets": (
+        ("us-gaap", "AmortizationOfIntangibleAssets"),
+        ("us-gaap", "AmortizationOfFiniteLivedIntangibleAssets"),
+    ),
+    # Added for display-only valuation ratios (EV/EBIT, FCFF, ROIC, Altman
+    # Z-Score, DDM Value) -- see add_derived_filing_metrics. Not used by any
+    # scoring/ranking signal.
+    "CurrentAssets": (
+        ("us-gaap", "AssetsCurrent"),
+        ("ifrs-full", "CurrentAssets"),
+    ),
+    "CurrentLiabilities": (
+        ("us-gaap", "LiabilitiesCurrent"),
+        ("ifrs-full", "CurrentLiabilities"),
+    ),
+    "RetainedEarnings": (
+        ("us-gaap", "RetainedEarningsAccumulatedDeficit"),
+        ("ifrs-full", "RetainedEarnings"),
+    ),
+    "IncomeTaxExpense": (
+        ("us-gaap", "IncomeTaxExpenseBenefit"),
+        ("ifrs-full", "IncomeTaxExpenseContinuingOperations"),
     ),
 }
 
@@ -124,6 +195,9 @@ INSTANT_METRICS = {
     "DebtCurrent",
     "DebtNoncurrent",
     "SharesOutstanding",
+    "CurrentAssets",
+    "CurrentLiabilities",
+    "RetainedEarnings",
 }
 
 TEXT_PATTERNS: dict[str, tuple[str, ...]] = {
@@ -383,11 +457,11 @@ def sync_sec_filings(
     audits: list[dict[str, Any]] = []
 
     for ticker in ticker_list:
-        cik = cik_map.get(ticker)
+        ticker_root = raw_root / ticker
+        cik = cik_map.get(ticker) or cached_submission_cik(ticker_root, ticker)
         if cik is None:
             audits.append(_audit(ticker, "FAILED", "CIK_NOT_FOUND"))
             continue
-        ticker_root = raw_root / ticker
         try:
             submissions = client.cached_json(
                 SEC_SUBMISSIONS_URL.format(cik=cik),
@@ -408,15 +482,47 @@ def sync_sec_filings(
             filings = filter_filings(
                 pd.concat(submission_frames, ignore_index=True), settings
             )
+            companyfacts_url = SEC_COMPANYFACTS_URL.format(cik=cik)
+            companyfacts_path = ticker_root / "companyfacts.json"
             companyfacts = client.cached_json(
-                SEC_COMPANYFACTS_URL.format(cik=cik),
-                ticker_root / "companyfacts.json",
+                companyfacts_url,
+                companyfacts_path,
                 refresh=refresh_metadata,
             )
             standardized = extract_standardized_facts(companyfacts)
             ticker_metrics = derive_filing_metrics(
                 filings, standardized, ticker=ticker
             )
+            metadata_retry = False
+            if (
+                not refresh_metadata
+                and latest_filing_has_no_core_facts(ticker_metrics)
+            ):
+                # A new submission can arrive before a previously cached
+                # Company Facts response contains its XBRL observations.  Do
+                # one forced refresh so the dashboard never accepts that stale
+                # cache as a successfully populated filing.
+                metadata_retry = True
+                companyfacts = client.cached_json(
+                    companyfacts_url,
+                    companyfacts_path,
+                    refresh=True,
+                )
+                standardized = extract_standardized_facts(companyfacts)
+                ticker_metrics = derive_filing_metrics(
+                    filings, standardized, ticker=ticker
+                )
+            incomplete_latest = latest_filing_has_no_core_facts(ticker_metrics)
+            if not ticker_metrics.empty:
+                # SEC's own SIC industry classification, already present on
+                # every cached submissions.json response -- no extra fetch.
+                # Used only for display-only peer-group grouping in the
+                # dashboard (e.g. AEP/VST/NRG all SIC 4911 Electric
+                # Services), never for scoring/ranking.
+                ticker_metrics["Sic"] = str(submissions.get("sic", ""))
+                ticker_metrics["SicDescription"] = str(
+                    submissions.get("sicDescription", "")
+                )
             metric_rows.extend(ticker_metrics.to_dict("records"))
 
             downloaded = 0
@@ -467,12 +573,13 @@ def sync_sec_filings(
             audits.append(
                 _audit(
                     ticker,
-                    "OK",
-                    "",
+                    "PARTIAL" if incomplete_latest else "OK",
+                    "LATEST_FILING_CORE_FACTS_MISSING" if incomplete_latest else "",
                     cik=cik,
                     filings=len(filings),
                     documents=downloaded,
                     facts=len(standardized),
+                    metadata_retry=metadata_retry,
                 )
             )
         except Exception as exc:  # noqa: BLE001 - isolate issuer failure
@@ -517,6 +624,7 @@ def sync_sec_filings(
             "output_label": output_label,
             "tickers": ticker_list,
             "successful_tickers": int(audit["Status"].eq("OK").sum()),
+            "partial_tickers": int(audit["Status"].eq("PARTIAL").sum()),
             "failed_tickers": int(audit["Status"].eq("FAILED").sum()),
             "filing_count": len(filing_index),
             "document_feature_count": len(text_features),
@@ -544,6 +652,28 @@ def build_ticker_cik_map(payload: dict[str, Any]) -> dict[str, str]:
         if ticker and cik:
             result[ticker] = cik.zfill(10)
     return result
+
+
+def cached_submission_cik(ticker_root: Path, ticker: str) -> str | None:
+    """Recover a validated CIK when SEC's current ticker index omits a company."""
+
+    submissions_path = ticker_root / "submissions.json"
+    if not submissions_path.exists():
+        return None
+    try:
+        payload = json.loads(submissions_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    requested = ticker.strip().upper().replace(".", "-")
+    payload_tickers = {
+        str(value).strip().upper().replace(".", "-")
+        for value in payload.get("tickers", [])
+    }
+    cik = str(payload.get("cik", "")).strip()
+    if requested not in payload_tickers or not cik.isdigit():
+        return None
+    return cik.zfill(10)
 
 
 def submission_frame(payload: dict[str, Any]) -> pd.DataFrame:
@@ -710,6 +840,20 @@ def derive_filing_metrics(
     return add_derived_filing_metrics(frame)
 
 
+CORE_FILING_FACTS = ("Revenue", "OperatingIncome", "NetIncome", "Assets")
+
+
+def latest_filing_has_no_core_facts(metrics: pd.DataFrame) -> bool:
+    """Return true when a discovered latest filing has no usable XBRL core facts."""
+
+    if metrics.empty:
+        return False
+    latest = metrics.sort_values("AvailableDate").iloc[-1]
+    return not any(
+        pd.notna(latest.get(column)) for column in CORE_FILING_FACTS
+    )
+
+
 def select_filing_fact(
     facts: pd.DataFrame,
     *,
@@ -740,8 +884,149 @@ def select_filing_fact(
     return chosen.to_dict()
 
 
+def split_adjust_share_series(values: pd.Series) -> pd.Series:
+    """Rescale a chronologically-sorted share-count series onto a single
+    consistent basis by neutralizing discrete jumps consistent with a
+    forward/reverse stock split.
+
+    SEC filings report the actual share count as of that filing -- correctly
+    unadjusted for later splits. A naive period-over-period share-count
+    comparison therefore reads a 10-for-1 split as "1000% dilution" for the
+    one period it falls in. This does not change what was actually filed;
+    it only normalizes the series so period-over-period comparisons (e.g.
+    ShareGrowthYoYFiled) reflect real issuance/buybacks rather than a
+    split's mechanical share-count change. Input must already be sorted by
+    date (ascending).
+    """
+    raw = values.to_numpy(dtype=float)
+    n = len(raw)
+    factors = np.ones(n)
+    cumulative = 1.0
+    for i in range(n - 1, 0, -1):
+        prev, curr = raw[i - 1], raw[i]
+        if np.isfinite(prev) and np.isfinite(curr) and prev > 0:
+            ratio = curr / prev
+            if ratio > 1.8 or ratio < 0.55:
+                cumulative *= ratio
+        factors[i - 1] = cumulative
+    return pd.Series(raw * factors, index=values.index)
+
+
+def _ttm_with_q4_derivation(frame: pd.DataFrame, column: str) -> pd.Series:
+    """Trailing-12-month sum of a flow metric, aligned to `frame`'s index.
+
+    Most US filers never file a standalone Q4 10-Q -- Q4 only appears
+    bundled into the annual 10-K (FY total). A naive 4-quarter rolling sum
+    over just the QUARTERLY rows therefore silently skips every Q4 and
+    wraps into next year's Q1. Q4 is derived here as FY total minus the
+    filed Q1+Q2+Q3 (only when all three are present), then a continuous
+    4-quarter rolling sum is taken over PeriodOfReport order. Same pattern
+    as dashboard.engine._trailing_twelve_month_eps, generalized to any flow
+    column (NetIncome, OperatingIncome, Revenue, DividendPerShare, ...).
+
+    Returns all-NaN when the period schema is absent. Every caller is in the
+    display-only valuation block, so a missing TTM drops a displayed ratio and
+    never reaches signals.py/portfolio.py -- the same graceful-degradation
+    convention `add_derived_filing_metrics` already uses for
+    SharesOutstandingConcept.
+    """
+    if not {"PeriodOfReport", "PeriodKind"}.issubset(frame.columns):
+        return pd.Series(np.nan, index=frame.index)
+    ordered = frame[["PeriodOfReport", "PeriodKind"]].copy()
+    ordered[column] = pd.to_numeric(frame[column], errors="coerce")
+    quarterly = ordered.loc[ordered["PeriodKind"].eq("QUARTERLY"), ["PeriodOfReport", column]]
+    annual = ordered.loc[ordered["PeriodKind"].eq("ANNUAL")]
+    derived_q4 = []
+    for _, arow in annual.iterrows():
+        fy_end = arow["PeriodOfReport"]
+        preceding = quarterly.loc[
+            quarterly["PeriodOfReport"].between(
+                fy_end - pd.Timedelta(days=280), fy_end - pd.Timedelta(days=1)
+            )
+        ]
+        if len(preceding) == 3 and pd.notna(arow[column]) and preceding[column].notna().all():
+            derived_q4.append(
+                {"PeriodOfReport": fy_end, column: arow[column] - preceding[column].sum()}
+            )
+    all_quarters = (
+        pd.concat([quarterly, pd.DataFrame(derived_q4)], ignore_index=True)
+        if derived_q4
+        else quarterly
+    )
+    all_quarters = all_quarters.sort_values("PeriodOfReport").drop_duplicates(
+        "PeriodOfReport", keep="last"
+    )
+    all_quarters["Ttm"] = all_quarters[column].rolling(4, min_periods=4).sum()
+    ttm_by_period = all_quarters.set_index("PeriodOfReport")["Ttm"]
+    return ordered["PeriodOfReport"].map(ttm_by_period).set_axis(frame.index)
+
+
+def _most_recent_annual(frame: pd.DataFrame, column: str) -> pd.Series:
+    """As-of-`PeriodOfReport` lookup of the most recent 10-K's value of
+    `column`, carried forward until the next 10-K. Always a clean,
+    unambiguous full-fiscal-year figure regardless of how a filer tags
+    interim-quarter durations. All-NaN without the period schema, same
+    display-only degradation as `_ttm_with_q4_derivation`."""
+    if not {"PeriodOfReport", "PeriodKind"}.issubset(frame.columns):
+        return pd.Series(np.nan, index=frame.index)
+    annual = frame.loc[
+        frame["PeriodKind"].eq("ANNUAL"), ["PeriodOfReport", column]
+    ].dropna().sort_values("PeriodOfReport")
+    if annual.empty:
+        return pd.Series(np.nan, index=frame.index)
+    lookup = pd.DataFrame({"PeriodOfReport": frame["PeriodOfReport"]}).sort_values(
+        "PeriodOfReport"
+    )
+    matched = pd.merge_asof(
+        lookup, annual.rename(columns={column: "_value"}),
+        on="PeriodOfReport", direction="backward",
+    )
+    return matched.set_index(lookup.index)["_value"].reindex(frame.index)
+
+
+def _capped_five_year_cagr(
+    period_ends: pd.Series, ttm_values: pd.Series, *, cap: float
+) -> pd.Series:
+    """5-year CAGR of a TTM series, floored at 0% and capped at `cap`.
+
+    Used as a growth-rate ASSUMPTION feeding the DCF fair-value model
+    (see add_derived_filing_metrics) -- not a filed fact. Capping prevents
+    a single noisy/lumpy period from producing an implausible growth
+    input, and keeps the assumed growth safely below the assumed discount
+    rate. Returns NaN wherever fewer than 5 years of TTM history exist.
+    """
+    lookup = pd.Series(ttm_values.to_numpy(), index=period_ends).dropna()
+    lookup = lookup[~lookup.index.duplicated(keep="last")].sort_index()
+
+    def _growth(period_end: pd.Timestamp) -> float:
+        if pd.isna(period_end) or period_end not in lookup.index:
+            return np.nan
+        prior_candidates = lookup.loc[: period_end - pd.Timedelta(days=365 * 5)]
+        if prior_candidates.empty:
+            return np.nan
+        prior_value = prior_candidates.iloc[-1]
+        current_value = lookup.loc[period_end]
+        if not (
+            pd.notna(prior_value)
+            and prior_value > 0
+            and pd.notna(current_value)
+            and current_value > 0
+        ):
+            return np.nan
+        return min(cap, max(0.0, (current_value / prior_value) ** (1 / 5) - 1))
+
+    return period_ends.map(_growth)
+
+
 def add_derived_filing_metrics(frame: pd.DataFrame) -> pd.DataFrame:
     result = frame.copy()
+    for optional_column in (
+        "Depreciation",
+        "AmortizationOfIntangibleAssets",
+        "DepreciationAndAmortization",
+    ):
+        if optional_column not in result.columns:
+            result[optional_column] = np.nan
     result["TotalDebt"] = result[["DebtCurrent", "DebtNoncurrent"]].sum(
         axis=1, min_count=1
     )
@@ -776,9 +1061,164 @@ def add_derived_filing_metrics(frame: pd.DataFrame) -> pd.DataFrame:
     result["NetIncomeGrowthYoYFiled"] = _same_period_growth(
         result, "NetIncome"
     )
-    result["ShareGrowthYoYFiled"] = _same_period_growth(
-        result, "SharesOutstanding"
+    result["SharesOutstandingSplitAdjusted"] = split_adjust_share_series(
+        pd.to_numeric(result["SharesOutstanding"], errors="coerce")
     )
+    share_concept = result.get(
+        "SharesOutstandingConcept", pd.Series("", index=result.index)
+    ).astype(str)
+    result["ShareGrowthBasis"] = np.where(
+        share_concept.isin(
+            {
+                "WeightedAverageNumberOfSharesOutstandingBasic",
+                "WeightedAverageNumberOfShareOutstandingBasicAndDiluted",
+                "WeightedAverageShares",
+            }
+        ),
+        "WEIGHTED_AVERAGE_BASIC",
+        "PERIOD_END_OUTSTANDING",
+    )
+    result["ShareGrowthYoYFiled"] = _same_period_growth(
+        result, "SharesOutstandingSplitAdjusted"
+    )
+    split_depreciation_and_amortization = result[
+        ["Depreciation", "AmortizationOfIntangibleAssets"]
+    ].sum(axis=1, min_count=1)
+    depreciation_and_amortization = split_depreciation_and_amortization.where(
+        split_depreciation_and_amortization.notna(),
+        result["DepreciationAndAmortization"],
+    )
+    result["Ebitda"] = pd.concat(
+        [result["OperatingIncome"], depreciation_and_amortization], axis=1
+    ).sum(axis=1, min_count=2)
+    result["EbitdaMargin"] = _safe_div(result["Ebitda"], result["Revenue"])
+    result["EbitdaGrowthYoYFiled"] = _same_period_growth(result, "Ebitda")
+
+    # -- Display-only valuation ratios (EPS/EV-EBIT/FCFF/ROIC/Altman
+    # Z/DCF). None of this feeds signals.py/portfolio.py -- same
+    # "display-only, not part of any trading signal" precedent as
+    # dashboard.engine._trailing_twelve_month_eps/_attach_pe_peg. Anything
+    # needing price (EV/EBIT, Altman Z's and FCFF/EV's market-value-of-
+    # equity term) is finished downstream in export_score_history.py,
+    # which has price data.
+    # None of these inputs is guaranteed to be present: a filer can omit any
+    # concept, and callers that only want the filed ratios above pass a frame
+    # without the valuation inputs at all. Missing ones are materialised as NaN
+    # once here so the block degrades to blank ratios instead of raising
+    # KeyError partway through -- the same graceful-degradation convention used
+    # for SharesOutstandingConcept above.
+    for optional_input in (
+        "NetIncome", "OperatingIncome", "Revenue", "IncomeTaxExpense",
+        "CurrentAssets", "CurrentLiabilities", "OperatingCashFlow",
+        "InterestExpense", "CapitalExpenditures", "TotalDebt", "Equity", "Cash",
+    ):
+        if optional_input not in result.columns:
+            result[optional_input] = np.nan
+    if "PeriodOfReport" not in result.columns:
+        result["PeriodOfReport"] = pd.NaT
+
+    # DilutedShares is not guaranteed: the same filers that force the basic
+    # share fallback above (diluted counts split across share classes, or an
+    # IFRS filer) never populate it, and reading it directly raised KeyError.
+    # Fall back per-row to the split-adjusted outstanding count -- for a
+    # company with no dilutive securities the two are equal anyway, and an
+    # EpsTtm off basic shares is closer than no EpsTtm at all. Display-only,
+    # same as everything else in this block.
+    diluted_shares = split_adjust_share_series(
+        pd.to_numeric(
+            result.get("DilutedShares", pd.Series(np.nan, index=result.index)),
+            errors="coerce",
+        )
+    )
+    result["DilutedSharesSplitAdjusted"] = diluted_shares.where(
+        diluted_shares.notna(), result["SharesOutstandingSplitAdjusted"]
+    )
+    result["NetIncomeTtm"] = _ttm_with_q4_derivation(result, "NetIncome")
+    result["EbitTtm"] = _ttm_with_q4_derivation(result, "OperatingIncome")
+    result["RevenueTtm"] = _ttm_with_q4_derivation(result, "Revenue")
+    result["EpsTtm"] = _safe_div(
+        result["NetIncomeTtm"], result["DilutedSharesSplitAdjusted"]
+    )
+
+    # Effective tax rate approximated per-filing as Tax / (NetIncome + Tax)
+    # (i.e. Tax / Pretax Income, since no separate PretaxIncome concept is
+    # extracted). Falls back to a 21% US statutory-rate assumption when the
+    # filing doesn't tag IncomeTaxExpenseBenefit or when NetIncome+Tax<=0.
+    pretax = result["NetIncome"] + result["IncomeTaxExpense"]
+    effective_tax_rate = (result["IncomeTaxExpense"] / pretax).where(pretax > 0)
+    result["EffectiveTaxRate"] = effective_tax_rate.clip(lower=0, upper=0.5).fillna(0.21)
+
+    result["WorkingCapital"] = result["CurrentAssets"] - result["CurrentLiabilities"]
+    result["Fcff"] = (
+        result["OperatingCashFlow"]
+        + result["InterestExpense"].fillna(0) * (1 - result["EffectiveTaxRate"])
+        - result["CapitalExpenditures"]
+    ).where(matching_fcf_duration)
+    result["FcffGrowthYoYFiled"] = _same_period_growth(result, "Fcff")
+    # Many filers (e.g. AEP) tag OperatingCashFlow/CapitalExpenditures as
+    # cumulative year-to-date in interim 10-Qs rather than discrete-quarter
+    # (visible as OperatingCashFlowDurationDays ~180/272 instead of ~91) --
+    # summing those as if they were discrete quarters would double-count.
+    # The Q4-derivation TTM is only trustworthy where Fcff's own quarters
+    # are already discrete, so fall back to the most recent full fiscal
+    # year's (10-K's) Fcff -- always a clean, unambiguous 365-day figure --
+    # whenever the TTM reconstruction itself is unavailable.
+    result["FcffTtm"] = _ttm_with_q4_derivation(result, "Fcff")
+    result["FcffTtm"] = result["FcffTtm"].where(
+        result["FcffTtm"].notna(), _most_recent_annual(result, "Fcff")
+    )
+
+    result["Nopat"] = result["EbitTtm"] * (1 - result["EffectiveTaxRate"])
+    result["InvestedCapital"] = result["TotalDebt"] + result["Equity"] - result["Cash"]
+    result["Roic"] = _safe_div(result["Nopat"], result["InvestedCapital"]).where(
+        result["InvestedCapital"] > 0
+    )
+
+    # DCF (2-stage FCFF, no price needed -- unlike EV/EBIT and Altman Z's
+    # market-value-of-equity term, which need price and are finished
+    # downstream in export_score_history.py). 5 years of explicit FCFF
+    # growth at g1 (the 5-year TTM revenue CAGR, capped at 6% -- FCFF
+    # itself is too sparse/lumpy quarter-to-quarter for a stable CAGR, so
+    # revenue growth is used as the proxy growth driver), then a Gordon
+    # terminal value at a fixed 2.5% perpetual growth. Discount rate is a
+    # flat 8% WACC assumption. All three (g1, terminal growth, discount
+    # rate) are modeling ASSUMPTIONS, not filed facts -- flagged as such
+    # wherever this is displayed. g1 only compounds the explicit 5-year
+    # cash flows (a finite sum, never divided by r-g1), so it cannot blow
+    # up the model on its own -- only the terminal growth rate could, and
+    # that is a fixed 2.5% constant safely below the 8% discount rate, so
+    # no additional gating is needed here (a prior version incorrectly
+    # gated on g1 < discount rate, which blanked out DCF for any fast
+    # grower like SPGI whose capped growth rate hit the cap exactly).
+    dcf_discount_rate = 0.08
+    dcf_terminal_growth = 0.025
+    revenue_growth = _capped_five_year_cagr(
+        result["PeriodOfReport"], result["RevenueTtm"], cap=0.06
+    )
+    result["DcfAssumedGrowth"] = revenue_growth
+    result["DcfAssumedTerminalGrowth"] = dcf_terminal_growth
+    result["DcfAssumedDiscountRate"] = dcf_discount_rate
+    explicit_years = range(1, 6)
+    discounted_explicit = sum(
+        result["FcffTtm"]
+        * (1 + revenue_growth) ** year
+        / (1 + dcf_discount_rate) ** year
+        for year in explicit_years
+    )
+    terminal_fcff = result["FcffTtm"] * (1 + revenue_growth) ** 5 * (1 + dcf_terminal_growth)
+    discounted_terminal = (
+        terminal_fcff / (dcf_discount_rate - dcf_terminal_growth)
+    ) / (1 + dcf_discount_rate) ** 5
+    enterprise_value_dcf = discounted_explicit + discounted_terminal
+    equity_value_dcf = enterprise_value_dcf - result["TotalDebt"] + result["Cash"]
+    dcf_value = _safe_div(equity_value_dcf, result["SharesOutstandingSplitAdjusted"])
+    # A non-positive fair value isn't a meaningful "price" to show, even
+    # though it's a mathematically valid model output -- e.g. a heavy
+    # capex quarter (AMZN's AI-datacenter buildout) can make quarterly
+    # FCFF, and therefore the whole projection, go negative. Treated the
+    # same as any other "can't give a real answer" case: blank, not a
+    # misleading negative number.
+    result["DcfValue"] = dcf_value.where(dcf_value > 0)
     return result
 
 
@@ -949,6 +1389,7 @@ def _audit(
     filings: int = 0,
     documents: int = 0,
     facts: int = 0,
+    metadata_retry: bool = False,
 ) -> dict[str, Any]:
     return {
         "Ticker": ticker,
@@ -957,6 +1398,7 @@ def _audit(
         "FilingCount": filings,
         "DocumentCount": documents,
         "StandardFactCount": facts,
+        "MetadataRefreshRetried": metadata_retry,
         "Error": error,
     }
 

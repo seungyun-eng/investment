@@ -8,6 +8,8 @@ import pandas as pd
 FILING_FEATURE_COLUMNS = {
     "RevenueGrowthYoYFiled": "FiledRevenueGrowthYoY",
     "NetIncomeGrowthYoYFiled": "FiledNetIncomeGrowthYoY",
+    "EbitdaGrowthYoYFiled": "FiledEbitdaGrowthYoY",
+    "EbitdaMargin": "FiledEbitdaMargin",
     "GrossMargin": "FiledGrossMargin",
     "OperatingMargin": "FiledOperatingMargin",
     "FreeCashFlowMargin": "FiledFreeCashFlowMargin",

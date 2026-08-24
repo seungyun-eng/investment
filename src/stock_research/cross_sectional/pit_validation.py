@@ -257,7 +257,7 @@ def apply_membership_to_panel(
         how="left",
         validate="many_to_one",
     )
-    frame["UniverseMember"] = frame["_UniverseMember"].fillna(False)
+    frame["UniverseMember"] = frame["_UniverseMember"].astype("boolean").fillna(False).astype(bool)
     frame = frame.drop(columns=["_UniverseMember"])
     if delisting_events is not None and not delisting_events.empty:
         first_delisting = (

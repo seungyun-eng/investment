@@ -18,14 +18,22 @@ def weekly_signal_dates(
     dates: pd.Series | pd.DatetimeIndex,
     rebalance_weekday: int = 4,
 ) -> pd.DatetimeIndex:
+    """Return only completed weekly signal sessions.
+
+    A partial current week must not become a live signal merely because the
+    dashboard refreshes during that week.  Once the week has completed, the
+    final known exchange session is retained so holiday-shortened weeks still
+    have one valid weekly close signal.
+    """
     values = pd.Series(pd.to_datetime(dates).unique()).dropna().sort_values()
     if values.empty:
         return pd.DatetimeIndex([])
     weekday_names = ("MON", "TUE", "WED", "THU", "FRI")
-    weekly = values.groupby(
-        values.dt.to_period(f"W-{weekday_names[rebalance_weekday]}")
-    ).max()
-    return pd.DatetimeIndex(weekly.to_numpy())
+    weeks = values.dt.to_period(f"W-{weekday_names[rebalance_weekday]}")
+    final_sessions = values.groupby(weeks).max()
+    week_end = final_sessions.index.to_timestamp(how="end").normalize()
+    completed = week_end <= values.max().normalize()
+    return pd.DatetimeIndex(final_sessions.loc[completed].to_numpy())
 
 
 def score_panel(
@@ -696,24 +704,76 @@ def signal_day_panel(
     period = panel.loc[panel["Date"].between(start, end)].copy()
     if period.empty:
         return period
-    weekday_names = ("MON", "TUE", "WED", "THU", "FRI")
     coverage = (
         period.groupby("Date", as_index=False)["Ticker"]
         .nunique()
         .rename(columns={"Ticker": "CrossSectionCoverage"})
     )
-    coverage["Week"] = coverage["Date"].dt.to_period(
-        f"W-{weekday_names[rebalance_weekday]}"
-    )
-    dates = pd.DatetimeIndex(
-        coverage.sort_values(
-            ["Week", "CrossSectionCoverage", "Date"],
-            ascending=[True, False, False],
-        )
-        .drop_duplicates("Week", keep="first")["Date"]
-        .sort_values()
+    dates = weekly_signal_dates(
+        coverage["Date"],
+        rebalance_weekday=rebalance_weekday,
     )
     return period.loc[period["Date"].isin(dates)].copy()
+
+
+def monthly_weight_reset_targets(targets: pd.DataFrame) -> pd.DataFrame:
+    """Keep weekly selection changes but reset weights only once per month.
+
+    The input remains the shared weekly target stream used by optimization and
+    live simulation.  A full target group is executable when the selected set
+    changes (including an immediate exit) or on the first available signal of a
+    new calendar month.  Unchanged intra-month target groups are omitted so the
+    portfolio can drift naturally between maintenance dates.
+    """
+
+    required = {"Date", "Ticker", "TargetWeight"}
+    missing = sorted(required - set(targets.columns))
+    if missing:
+        raise ValueError(
+            "Monthly weight reset targets are missing columns: "
+            + ", ".join(missing)
+        )
+    if targets.empty:
+        result = targets.copy()
+        result["ExecutionReason"] = pd.Series(dtype="object")
+        return result
+
+    frame = targets.copy()
+    frame["Date"] = pd.to_datetime(frame["Date"])
+    executable: list[pd.DataFrame] = []
+    previous_selected: set[str] | None = None
+    previous_month: pd.Period | None = None
+
+    for signal_date, group in frame.groupby("Date", sort=True):
+        selected = set(
+            group.loc[
+                pd.to_numeric(group["TargetWeight"], errors="coerce").fillna(0).gt(0),
+                "Ticker",
+            ].astype(str)
+        )
+        month = pd.Timestamp(signal_date).to_period("M")
+        if previous_selected is None:
+            reason = "INITIAL_ALLOCATION"
+        elif selected != previous_selected:
+            reason = "MEMBERSHIP_CHANGE"
+        elif month != previous_month:
+            reason = "MONTHLY_WEIGHT_RESET"
+        else:
+            reason = None
+
+        if reason is not None:
+            current = group.copy()
+            current["ExecutionReason"] = reason
+            executable.append(current)
+
+        previous_selected = selected
+        previous_month = month
+
+    if not executable:
+        result = frame.iloc[0:0].copy()
+        result["ExecutionReason"] = pd.Series(dtype="object")
+        return result
+    return pd.concat(executable, ignore_index=True)
 
 
 def _trade_action(

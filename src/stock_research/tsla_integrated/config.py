@@ -23,6 +23,12 @@ class IntegratedParams:
     buy_downside_probability_max: float = 0.40
     reentry_macro_score_min: float = 0.35
     reentry_return21_min: float = 0.00
+    january_rebound_downside_probability_max: float = 0.75
+    contrarian_buy_tactical_max: float = 0.35
+    contrarian_buy_financial_score_min: float = 0.20
+    contrarian_lookback_sessions: int = 15
+    contrarian_rsi_oversold_max: float = 35.0
+    contrarian_leverage: float = 1.0
     trend_entry_window: int = 50
     trend_exit_window: int = 50
     trend_entry_threshold: float = 0.00
@@ -79,6 +85,34 @@ class IntegratedParams:
             raise ValueError("reentry macro score must be in [0, 1].")
         if not -1 <= self.reentry_return21_min <= 1:
             raise ValueError("reentry 21-session return must be in [-1, 1].")
+        if not (
+            self.reentry_downside_probability_max
+            <= self.january_rebound_downside_probability_max
+            <= 1
+        ):
+            raise ValueError(
+                "january_rebound_downside_probability_max must be in "
+                "[reentry_downside_probability_max, 1] -- the seasonal "
+                "window is meant to be looser than the ordinary reentry gate."
+            )
+        if not 0 <= self.contrarian_buy_tactical_max <= 1:
+            raise ValueError("contrarian_buy_tactical_max must be in [0, 1].")
+        if not 0 <= self.contrarian_buy_financial_score_min <= 1:
+            raise ValueError(
+                "contrarian_buy_financial_score_min must be in [0, 1]."
+            )
+        if self.contrarian_lookback_sessions < 2:
+            raise ValueError(
+                "contrarian_lookback_sessions must be at least two sessions."
+            )
+        if not 0 <= self.contrarian_rsi_oversold_max <= 100:
+            raise ValueError("contrarian_rsi_oversold_max must be in [0, 100].")
+        if not 0 < self.contrarian_leverage <= 3:
+            raise ValueError(
+                "contrarian_leverage must be in (0, 3]; models margin "
+                "borrowed against the same capital for a 1x-3x leveraged "
+                "long, applied only to contrarian-path entries."
+            )
         if self.trend_entry_window < 2 or self.trend_exit_window < 2:
             raise ValueError("Trend windows must be at least two sessions.")
         if not -1 <= self.trend_entry_threshold <= 1:

@@ -202,6 +202,9 @@ def run_portfolio_backtest(
             len(tickers),
             dtype=float,
         )
+        trade_notional_by_ticker = np.zeros(len(tickers), dtype=float)
+        trade_cash_flow_by_ticker = np.zeros(len(tickers), dtype=float)
+        trade_shares_by_ticker = np.zeros(len(tickers), dtype=float)
         if date in execution_schedule:
             scheduled_target = execution_schedule[date]
             target = scheduled_target.to_numpy(dtype=float, copy=True)
@@ -231,6 +234,17 @@ def run_portfolio_backtest(
                 )
             net_equity = max(pre_trade_equity - transaction_cost, 0.0)
             desired_after_cost = target * net_equity
+            trade_notional_by_ticker = desired_after_cost - current_notional
+            trade_cash_flow_by_ticker = (
+                -trade_notional_by_ticker - transaction_cost_by_ticker
+            )
+            desired_shares = np.divide(
+                desired_after_cost,
+                open_row,
+                out=np.zeros_like(desired_after_cost),
+                where=tradable,
+            )
+            trade_shares_by_ticker = desired_shares - shares
             changed = np.abs(changes) > max(pre_trade_equity, 1.0) * 1e-8
             ticker_trades += int(changed.sum())
             rebalance_count += 1
@@ -271,6 +285,7 @@ def run_portfolio_backtest(
             active = (
                 (np.abs(gross_price_pnl) > 1e-12)
                 | (transaction_cost_by_ticker > 1e-12)
+                | (np.abs(trade_notional_by_ticker) > 1e-12)
                 | (np.abs(ending_notional) > 1e-12)
             )
             for ticker_index in np.flatnonzero(active):
@@ -285,6 +300,9 @@ def run_portfolio_backtest(
                         "TransactionCost": (
                             transaction_cost_by_ticker[ticker_index]
                         ),
+                        "TradeNotional": trade_notional_by_ticker[ticker_index],
+                        "TradeCashFlow": trade_cash_flow_by_ticker[ticker_index],
+                        "TradeShares": trade_shares_by_ticker[ticker_index],
                         "NetPnL": net_pnl[ticker_index],
                         "EndingNotional": ending_notional[ticker_index],
                         "EndingWeight": (
@@ -332,6 +350,9 @@ def run_portfolio_backtest(
                     "GrossPricePnL",
                     "DelistingPnL",
                     "TransactionCost",
+                    "TradeNotional",
+                    "TradeCashFlow",
+                    "TradeShares",
                     "NetPnL",
                     "EndingNotional",
                     "EndingWeight",

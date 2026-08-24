@@ -29,10 +29,13 @@ def _rolling_percentile(series: pd.Series, window: int = 756) -> pd.Series:
     return series.rolling(window, min_periods=126).rank(pct=True)
 
 
-def _rsi(close: pd.Series, length: int = 14) -> pd.Series:
+def wilder_rsi(close: pd.Series, length: int = 14) -> pd.Series:
+    """Wilder RSI used by the live TSLA V7.3 feature pipeline and V2 overlay."""
+    if length <= 0:
+        raise ValueError("length must be positive")
     change = close.diff()
-    gain = change.clip(lower=0).rolling(length, min_periods=length).mean()
-    loss = -change.clip(upper=0).rolling(length, min_periods=length).mean()
+    gain = change.clip(lower=0).ewm(alpha=1 / length, adjust=False, min_periods=length).mean()
+    loss = (-change.clip(upper=0)).ewm(alpha=1 / length, adjust=False, min_periods=length).mean()
     relative = gain / loss.replace(0, np.nan)
     return 100 - 100 / (1 + relative)
 
@@ -77,6 +80,7 @@ def _financial_features(
     operating_income = _numeric(
         frame, ["Operating Income", "EBIT", "Operating Income/Loss"]
     )
+    ebitda = _numeric(frame, ["EBITDA"])
     net_income = _numeric(frame, ["Net Income", "Net Income/Loss"])
     cash = _numeric(frame, ["Cash On Hand"])
     liabilities = _numeric(frame, ["Total Liabilities"])
@@ -95,6 +99,8 @@ def _financial_features(
             "RevenueGrowthYoY": revenue.pct_change(4, fill_method=None),
             "GrossMargin": gross_profit / revenue.replace(0, np.nan),
             "OperatingMargin": operating_income / revenue.replace(0, np.nan),
+            "EBITDAMargin": ebitda / revenue.replace(0, np.nan),
+            "EBITDAGrowthYoY": ebitda.pct_change(4, fill_method=None),
             "NetMargin": net_income / revenue.replace(0, np.nan),
             "FreeCashFlowMargin": (
                 operating_cash + capex
@@ -174,7 +180,7 @@ def build_integrated_features(
             min_periods=window,
         ).mean()
         frame[f"Trend{window}"] = close / frame[f"SMA{window}"] - 1
-    frame["RSI14"] = _rsi(close)
+    frame["RSI14"] = wilder_rsi(close)
     ema12 = close.ewm(span=12, adjust=False).mean()
     ema26 = close.ewm(span=26, adjust=False).mean()
     frame["MACD"] = ema12 - ema26
@@ -222,9 +228,12 @@ def build_integrated_features(
             ).combine_first(
                 pd.to_numeric(frame["FreeCashFlowMargin"], errors="coerce")
             )
-    frame["FilingCriticalFlag"] = frame.get(
-        "FilingCriticalFlag", pd.Series(False, index=frame.index)
-    ).fillna(False)
+    frame["FilingCriticalFlag"] = (
+        frame.get("FilingCriticalFlag", pd.Series(False, index=frame.index))
+        .astype("boolean")
+        .fillna(False)
+        .astype(bool)
+    )
     macro_daily = macro.copy().sort_values("Date")
     keep = [
         column
@@ -274,6 +283,19 @@ def build_integrated_features(
         if "YieldCurve" in frame
         else pd.Series(np.nan, index=frame.index)
     )
+
+    # The prior *completed* calendar year's total return, shifted forward
+    # onto every row of the following year. By January of year Y, all of
+    # year Y-1 is already in the past, so this carries no lookahead -- it is
+    # simply "how bad was last year," which is what actually drives
+    # December tax-loss-selling pressure and the subsequent January
+    # rebound in beaten-down, high-beta names like TSLA.
+    yearly_close = frame.groupby(frame["Date"].dt.year)["Close"].agg(
+        ["first", "last"]
+    )
+    yearly_return = yearly_close["last"] / yearly_close["first"] - 1
+    yearly_return.index = yearly_return.index + 1
+    frame["PriorCalendarYearReturn"] = frame["Date"].dt.year.map(yearly_return)
 
     # A fixed-rule (not fitted-to-TSLA) SPY 200/50-session trend regime, so a
     # broad market downtrend can confirm a short even in a training window

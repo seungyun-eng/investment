@@ -29,6 +29,12 @@ dependencies = [
 ml = [
   "tensorflow>=2.15",
   "scikit-learn>=1.4",
+  "lightgbm>=4.5",
+  "xgboost>=2.1",
+  "catboost>=1.2",
+  "shap>=0.46",
+  "pyarrow>=17.0",
+  "statsmodels>=0.14",
 ]
 dev = [
   "pytest>=8",

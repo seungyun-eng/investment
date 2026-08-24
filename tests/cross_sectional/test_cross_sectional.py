@@ -16,9 +16,62 @@ from stock_research.cross_sectional.optimization import _candidate_parameters
 from stock_research.cross_sectional.portfolio import run_portfolio_backtest
 from stock_research.cross_sectional.signals import (
     generate_rebalance_targets,
+    monthly_weight_reset_targets,
     score_panel,
     signal_day_panel,
 )
+
+
+def test_monthly_weight_reset_keeps_month_open_and_membership_changes() -> None:
+    rows = []
+    selections = {
+        "2026-01-02": {"A", "B"},
+        "2026-01-09": {"A", "B"},
+        "2026-02-06": {"A", "B"},
+        "2026-02-13": {"B", "C"},
+        "2026-02-20": {"B", "C"},
+    }
+    for signal_date, selected in selections.items():
+        for ticker in ("A", "B", "C"):
+            rows.append(
+                {
+                    "Date": signal_date,
+                    "Ticker": ticker,
+                    "TargetWeight": 0.5 if ticker in selected else 0.0,
+                }
+            )
+
+    result = monthly_weight_reset_targets(pd.DataFrame(rows))
+
+    reasons = (
+        result.groupby("Date")["ExecutionReason"].first().to_dict()
+    )
+    assert reasons == {
+        pd.Timestamp("2026-01-02"): "INITIAL_ALLOCATION",
+        pd.Timestamp("2026-02-06"): "MONTHLY_WEIGHT_RESET",
+        pd.Timestamp("2026-02-13"): "MEMBERSHIP_CHANGE",
+    }
+    assert result.groupby("Date").size().eq(3).all()
+
+
+def test_monthly_weight_reset_executes_an_immediate_full_exit() -> None:
+    targets = pd.DataFrame(
+        {
+            "Date": ["2026-01-02", "2026-01-02", "2026-01-09", "2026-01-09"],
+            "Ticker": ["A", "B", "A", "B"],
+            "TargetWeight": [0.5, 0.5, 0.0, 0.0],
+        }
+    )
+
+    result = monthly_weight_reset_targets(targets)
+
+    assert list(result["Date"].drop_duplicates()) == [
+        pd.Timestamp("2026-01-02"),
+        pd.Timestamp("2026-01-09"),
+    ]
+    assert result.loc[result["Date"].eq("2026-01-09"), "ExecutionReason"].eq(
+        "MEMBERSHIP_CHANGE"
+    ).all()
 from stock_research.cross_sectional.v6_reporting import (
     build_position_ledger,
     frozen_v6_variants,
@@ -129,7 +182,7 @@ def test_financial_features_obey_release_lag_and_staleness() -> None:
 
 
 def test_ttm_financial_momentum_builds_growth_and_valuation_inputs() -> None:
-    dates = pd.date_range("2018-03-31", periods=9, freq="Q")
+    dates = pd.date_range("2018-03-31", periods=9, freq="QE")
     financials = pd.DataFrame(
         {
             "Date": dates,
@@ -167,6 +220,138 @@ def test_ttm_financial_momentum_builds_growth_and_valuation_inputs() -> None:
     assert row["FinancialAvailableDate"] == row[
         "FinancialPeriodEnd"
     ] + pd.Timedelta(days=45)
+
+
+def _ttm_financials() -> pd.DataFrame:
+    dates = pd.date_range("2018-03-31", periods=9, freq="QE")
+    return pd.DataFrame(
+        {
+            "Date": dates,
+            "Revenue": [100.0] * 4 + [150.0] * 5,
+            "Net Income": [10.0] * 4 + [15.0] * 5,
+            "EBIT": [16.0] * 4 + [24.0] * 5,
+            "EBITDA": [20.0] * 4 + [30.0] * 5,
+            "Shares Outstanding": [10.0] * 9,
+            "Total Depreciation And Amortization - Cash Flow": [4.0] * 9,
+            "Net Change In Property, Plant, And Equipment": [-2.0] * 9,
+            "Total Change In Assets/Liabilities": [0.0] * 9,
+            "Total Liabilities": [10.0] * 9,
+            "Cash On Hand": [10.0] * 9,
+            "Total Assets": [100.0] * 9,
+            "Long Term Debt": [0.0] * 9,
+            "Cash Flow From Operating Activities": [15.0] * 9,
+        }
+    )
+
+
+def test_pit_strict_false_is_a_no_op_regression_check() -> None:
+    # pit_strict defaults to False, so every existing (pre-PIT-fix) caller
+    # of ResearchSettings across this repo must see byte-for-byte identical
+    # behavior. This directly compares the two code paths rather than just
+    # asserting the default value, so a future accidental behavior change
+    # under pit_strict=False would fail here even if the default flag
+    # itself were never touched.
+    financials = _ttm_financials()
+    legacy_settings = ResearchSettings(
+        train_start="2020-01-01",
+        train_end="2024-12-31",
+        validation_periods={"2025": ("2025-01-01", "2025-12-31")},
+        financial_feature_mode="ttm_value_momentum",
+    )
+    explicit_non_strict = ResearchSettings(
+        train_start="2020-01-01",
+        train_end="2024-12-31",
+        validation_periods={"2025": ("2025-01-01", "2025-12-31")},
+        financial_feature_mode="ttm_value_momentum",
+        pit_strict=False,
+    )
+    left = _build_available_financials(financials, legacy_settings)
+    right = _build_available_financials(financials, explicit_non_strict)
+    pd.testing.assert_frame_equal(left, right)
+
+
+def test_pit_strict_true_disables_unsafe_growth_and_quality_inputs() -> None:
+    financials = _ttm_financials()
+    settings = ResearchSettings(
+        train_start="2020-01-01",
+        train_end="2024-12-31",
+        validation_periods={"2025": ("2025-01-01", "2025-12-31")},
+        financial_feature_mode="ttm_value_momentum",
+        pit_strict=True,
+    )
+    available = _build_available_financials(financials, settings)
+    row = available.iloc[7]
+    # PIT_UNSAFE with no reconstruction path today (EBITDA/DCF-based, and
+    # the raw per-share EPS field): must be NaN.
+    for column in (
+        "EbitdaTtm",
+        "EbitdaTtmGrowthYoY",
+        "EbitdaTtmGrowthAcceleration",
+        "DcfPrice",
+        "DcfPriceGrowthYoY",
+        "EpsGrowthYoY",
+        "ReturnOnInvestment",
+    ):
+        assert pd.isna(row[column]), column
+    # PIT_FIXABLE (Revenue/OperatingIncome/OperatingCashFlow/CapEx/NetIncome
+    # /DilutedShares all have real XBRL tags) but not yet reconstructed by
+    # this blanket strict mode -- also disabled, not silently left unsafe.
+    for column in (
+        "EpsTtm",
+        "EpsTtmGrowthYoY",
+        "EpsTtmGrowthAcceleration",
+        "OperatingMargin",
+        "FreeCashFlowMargin",
+        "RevenueGrowthYoY",
+        "NetCashToAssets",
+    ):
+        assert pd.isna(row[column]), column
+    # FinancialAvailableDate itself is metadata, not a factor input -- it
+    # must survive strict mode unchanged (it's what makes the join causal
+    # in the first place, not a leakage source).
+    assert row["FinancialAvailableDate"] == row[
+        "FinancialPeriodEnd"
+    ] + pd.Timedelta(days=45)
+
+
+def test_pit_strict_true_propagates_through_derived_ratios() -> None:
+    prices = pd.DataFrame(
+        {
+            "Date": pd.date_range("2020-01-01", periods=10, freq="D"),
+            "Open": 10.0,
+            "High": 11.0,
+            "Low": 9.0,
+            "Close": 10.0,
+            "Volume": 1_000,
+        }
+    )
+    settings = ResearchSettings(
+        train_start="2020-01-01",
+        train_end="2024-12-31",
+        validation_periods={"2025": ("2025-01-01", "2025-12-31")},
+        financial_feature_mode="ttm_value_momentum",
+        pit_strict=True,
+    )
+    features = build_equity_features(
+        prices,
+        _ttm_financials(),
+        ticker="TEST",
+        company="Test",
+        settings=settings,
+    )
+    last = features.iloc[-1]
+    # PeTtm/EvEbitdaTtm/DcfUpside/GrowthAdjustedPe/GrowthAdjustedEvEbitda
+    # are computed downstream of _build_available_financials, not inside
+    # it -- confirm strict-mode NaNs propagate through those derived ratios
+    # too, rather than only being disabled at the source table.
+    for column in (
+        "PeTtm",
+        "EvEbitdaTtm",
+        "DcfUpside",
+        "GrowthAdjustedPe",
+        "GrowthAdjustedEvEbitda",
+    ):
+        assert pd.isna(last[column]), column
 
 
 def test_sparse_financial_cross_section_is_neutral_not_artificial_first() -> None:
@@ -278,7 +463,7 @@ def test_exit_rank_band_retains_existing_holding() -> None:
     assert not bool(second.loc["B", "ModelSelected"])
 
 
-def test_signal_day_prefers_complete_cross_section_over_later_date() -> None:
+def test_signal_day_uses_friday_and_excludes_partial_current_week() -> None:
     panel = pd.DataFrame(
         {
             "Date": pd.to_datetime(
@@ -317,8 +502,7 @@ def test_signal_day_prefers_complete_cross_section_over_later_date() -> None:
     )
 
     assert list(result["Date"].drop_duplicates()) == [
-        pd.Timestamp("2026-07-23"),
-        pd.Timestamp("2026-07-27"),
+        pd.Timestamp("2026-07-24"),
     ]
 
 

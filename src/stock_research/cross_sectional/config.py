@@ -23,6 +23,7 @@ class ResearchSettings:
     minimum_cross_section_size: int = 8
     minimum_financial_weight: float = 0.0
     financial_feature_mode: str = "legacy"
+    pit_strict: bool = False
     force_universe_exit: bool = False
     loss_aware_exit_enabled: bool = False
     minimum_exit_gain: float = 0.01
@@ -355,6 +356,7 @@ def settings_from_dict(raw: dict[str, object]) -> ResearchSettings:
         financial_feature_mode=str(
             raw.get("financial_feature_mode", "legacy")
         ),
+        pit_strict=bool(raw.get("pit_strict", False)),
         force_universe_exit=bool(raw.get("force_universe_exit", False)),
         loss_aware_exit_enabled=bool(
             raw.get("loss_aware_exit_enabled", False)

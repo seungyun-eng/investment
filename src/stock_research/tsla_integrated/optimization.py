@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -27,6 +27,7 @@ INTEGER_PARAM_NAMES = {
     "minimum_hold_sessions",
     "trend_entry_window",
     "trend_exit_window",
+    "contrarian_lookback_sessions",
 }
 
 
@@ -71,6 +72,9 @@ def consensus_execution_params(
         short_leverage=float(
             np.median([member.short_leverage for member in members])
         ),
+        contrarian_leverage=float(
+            np.median([member.contrarian_leverage for member in members])
+        ),
         market_short_exposure_max=float(
             np.median(
                 [member.market_short_exposure_max for member in members]
@@ -109,6 +113,9 @@ def sample_params(rng: np.random.Generator) -> IntegratedParams:
         if rng.random() < 0.25
         else float(rng.uniform(0.08, 0.35))
     )
+    reentry_downside_probability_max = float(
+        rng.uniform(0.35, min(0.95, short_downside - 0.01))
+    )
     return IntegratedParams(
         technical_weight=float(weights[0]),
         financial_weight=float(weights[1]),
@@ -121,13 +128,18 @@ def sample_params(rng: np.random.Generator) -> IntegratedParams:
         buy_macro_score_min=float(rng.uniform(0.35, 0.70)),
         short_downside_probability_min=short_downside,
         sell_downside_probability_min=float(rng.uniform(0.45, 0.75)),
-        reentry_downside_probability_max=float(
-            rng.uniform(0.35, min(0.95, short_downside - 0.01))
-        ),
+        reentry_downside_probability_max=reentry_downside_probability_max,
         cover_downside_probability_max=float(rng.uniform(0.25, 0.50)),
         buy_downside_probability_max=float(rng.uniform(0.20, 0.50)),
         reentry_macro_score_min=float(rng.uniform(0.0, 0.60)),
         reentry_return21_min=float(rng.uniform(-0.25, 0.12)),
+        january_rebound_downside_probability_max=float(
+            rng.uniform(reentry_downside_probability_max, 0.95)
+        ),
+        contrarian_buy_tactical_max=float(rng.uniform(0.15, 0.50)),
+        contrarian_buy_financial_score_min=float(rng.uniform(0.0, 0.40)),
+        contrarian_lookback_sessions=int(rng.choice([5, 10, 15, 21])),
+        contrarian_rsi_oversold_max=float(rng.uniform(25.0, 45.0)),
         trend_entry_window=entry_window,
         trend_exit_window=exit_window,
         trend_entry_threshold=float(rng.uniform(-0.08, 0.12)),
@@ -139,6 +151,7 @@ def sample_params(rng: np.random.Generator) -> IntegratedParams:
         short_stop_loss=float(rng.uniform(0.08, 0.25)),
         short_trailing_stop=float(rng.uniform(0.08, 0.25)),
         short_leverage=float(rng.uniform(1.0, 2.5)),
+        contrarian_leverage=float(rng.uniform(1.0, 2.0)),
         market_short_exposure_max=float(rng.uniform(0.10, 0.50)),
         minimum_hold_sessions=int(rng.choice([5, 10, 21, 42, 63])),
     )
@@ -197,8 +210,16 @@ def optimize_on_development(
     require_buy_hold_outperformance: bool = False,
     allow_no_eligible: bool = False,
     folds: tuple[tuple[str, str, str], ...] = DEFAULT_FOLDS,
+    sampler: Callable[[np.random.Generator], IntegratedParams] = sample_params,
+    signal_fn: Callable[[pd.DataFrame, IntegratedParams], pd.DataFrame] = generate_integrated_signals,
     **backtest_kwargs: float,
 ) -> OptimizationResult:
+    """`sampler`/`signal_fn` default to this module's own sample_params /
+    generate_integrated_signals, so every existing caller is unaffected.
+    They exist so an alternative, smaller parameter space and signal
+    function (see simple_strategy.py) can reuse this same fold-based
+    scoring/eligibility/walk-forward machinery instead of duplicating it."""
+
     rng = np.random.default_rng(seed)
     benchmark_by_period: dict[str, IntegratedResult] = {}
     for name, start, end in (("Development", None, None), *folds):
@@ -219,8 +240,8 @@ def optimize_on_development(
     rows: list[dict[str, float | int]] = []
     params_by_id: dict[int, IntegratedParams] = {}
     for candidate_id in range(1, candidate_count + 1):
-        params = sample_params(rng)
-        signals = generate_integrated_signals(features, params)
+        params = sampler(rng)
+        signals = signal_fn(features, params)
         result = run_integrated_backtest(
             signals, params, **backtest_kwargs
         )

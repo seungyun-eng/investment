@@ -12,6 +12,16 @@ MACRO_SERIES = {
     "CPI": "CPIAUCSL", "WTI": "MCOILWTICO", "VIX": "VIXCLS",
     "FedFundsRate": "FEDFUNDS", "Unemployment": "UNRATE",
     "HY_Spread": "BAMLH0A3HYCEY",
+    # Risk-monitor additions.  These stay raw so the research loader can
+    # apply an explicit, conservative availability lag by publication cadence.
+    "InitialJoblessClaims": "ICSA",
+    "ContinuingJoblessClaims": "CCSA",
+    "Treasury2Y": "DGS2",
+    # There is no continuously published two-year real Treasury yield. DFII5
+    # is the nearest liquid daily TIPS proxy and is labelled truthfully.
+    "RealYield5Y": "DFII5",
+    "CoreCPI": "CPILFESL",
+    "CorePCE": "PCEPILFE",
 }
 YIELD_CURVE_SERIES = ("GS10", "GS2")
 

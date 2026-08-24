@@ -4,6 +4,7 @@ import itertools
 import json
 import os
 import tempfile
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -40,6 +41,7 @@ from .v7_technical import (
     add_v7_technical_observations,
     scoring_panel_for_variant,
 )
+from .winner_attribution import summarize_ticker_contributions
 
 
 @dataclass(frozen=True)
@@ -106,6 +108,7 @@ class FilingV7Artifacts:
     executions_csv: Path
     latest_scores_csv: Path
     data_audit_csv: Path
+    contributions_csv: Path
     selection_json: Path
     manifest_json: Path
 
@@ -216,6 +219,9 @@ def run_filing_v7_optimization(
     membership: pd.DataFrame | None = None,
     market_cash_gate: dict[str, object] | None = None,
     output_dir: str | Path | None = None,
+    growth_quality_reconstructor: (
+        Callable[[pd.DataFrame], pd.DataFrame] | None
+    ) = None,
 ) -> FilingV7Artifacts:
     members = (
         universe_members
@@ -240,6 +246,13 @@ def run_filing_v7_optimization(
     v7_panel = scoring_panel_for_variant(technical, variant)
     filing_features = pd.read_csv(filing_features_path)
     merged = merge_filing_features(v7_panel, filing_features)
+    if growth_quality_reconstructor is not None:
+        # Phase 2 "Version C / PIT Reconstructed" hook: substitutes
+        # GrowthFactor/QualityFactor with values derived from the already
+        # PIT-safe Filed* columns merge_filing_features just attached (see
+        # point_in_time.py::reconstruct_growth_quality_pit_safe). A no-op
+        # for every other caller, since the default is None.
+        merged = growth_quality_reconstructor(merged)
     factored = add_filing_factors(
         merged,
         minimum_cross_section_size=min(
@@ -287,6 +300,22 @@ def run_filing_v7_optimization(
     spy_annual = _annual_return_map(
         spy_curve, start=settings.train_start, end=settings.train_end
     )
+    # Walk-forward folds for candidate selection (Phase 2/3 of the PIT-audit
+    # + selection-robustness plan): filing_v7_optimization previously scored
+    # every candidate on a single 5-calendar-year-return sample of the train
+    # window, unlike sibling modules (v7_capital_overlay.py,
+    # v7_risk_optimization.py) which already use settings.training_folds.
+    # Prepared once and reused across every candidate, matching train_market.
+    fold_markets = [
+        (
+            f"Fold{index}",
+            fold_start,
+            fold_end,
+            prepare_market(factored, start=fold_start, end=fold_end),
+            summarize_equity_curve(spy_curve, start=fold_start, end=fold_end),
+        )
+        for index, (fold_start, fold_end) in enumerate(settings.training_folds, start=1)
+    ]
 
     policies = _candidate_policies(optimization_config)
     candidate_rows: list[dict[str, object]] = []
@@ -304,15 +333,44 @@ def run_filing_v7_optimization(
             transaction_cost_bps=settings.transaction_cost_bps,
             prepared_market=train_market,
         )
+        fold_metrics = _fold_metrics(
+            targets,
+            fold_markets,
+            initial_capital=settings.initial_capital,
+            transaction_cost_bps=settings.transaction_cost_bps,
+        )
+        # Cost-robustness check for Phase 3's stable-region selector: does
+        # this candidate's edge survive a jump from the configured cost
+        # (10bp) to 25bp? Reuses train_market (cost isn't baked into the
+        # prepared market, only passed to run_portfolio_backtest itself).
+        cost_25bp_result = run_portfolio_backtest(
+            pd.DataFrame(),
+            targets,
+            start=settings.train_start,
+            end=settings.train_end,
+            initial_capital=settings.initial_capital,
+            transaction_cost_bps=25.0,
+            prepared_market=train_market,
+        )
+        cost_metrics = {
+            "Cost25bpCAGR": cost_25bp_result.summary.cagr_percent,
+            "Cost25bpExcessCAGR": (
+                cost_25bp_result.summary.cagr_percent - float(spy_train["CAGR"])
+            ),
+        }
         candidate_rows.append(
-            _candidate_metrics(
-                index,
-                policy,
-                result,
-                spy_train=spy_train,
-                spy_annual=spy_annual,
-                constraints=dict(optimization_config["selection_constraints"]),
-            )
+            {
+                **_candidate_metrics(
+                    index,
+                    policy,
+                    result,
+                    spy_train=spy_train,
+                    spy_annual=spy_annual,
+                    constraints=dict(optimization_config["selection_constraints"]),
+                ),
+                **fold_metrics,
+                **cost_metrics,
+            }
         )
         if index % 50 == 0 or index == len(policies):
             print(f"Filing V7 optimization progress: {index}/{len(policies)}", flush=True)
@@ -333,13 +391,25 @@ def run_filing_v7_optimization(
         & candidates["minimum_filing_coverage"].ge(6)
         & candidates["filing_quality_floor"].ge(0.0)
     ]
+    # The 100%-SEC-ranked comparison series requires filing_weight=1.0,
+    # coverage>=6, and floor>=0.0 to exist somewhere in the *caller's own*
+    # optimization_grid. That is expected for the production 672-candidate
+    # grid, but a caller may legitimately pass a narrower grid restricted to
+    # a specific study question (e.g. a robustness study that only varies
+    # filing_weight/hard_stop_return/minimum_hold_rebalances/exit_rank_buffer
+    # over a small range) where no such candidate exists. This diagnostic
+    # series is then skipped rather than hard-failing the whole run -- it
+    # does not affect selected_policy, candidates, or any other output.
     if pure_candidates.empty:
-        raise RuntimeError("No 100% SEC good-company candidate was generated")
-    pure_row = pure_candidates.iloc[0]
-    pure_policy = policies[int(pure_row["Candidate"]) - 1]
+        pure_row = None
+        pure_policy = None
+    else:
+        pure_row = pure_candidates.iloc[0]
+        pure_policy = policies[int(pure_row["Candidate"]) - 1]
 
     comparison_policies = _comparison_policies(base_params)
-    comparison_policies["V7_SEC_100_OPTIMIZED"] = pure_policy
+    if pure_policy is not None:
+        comparison_policies["V7_SEC_100_OPTIMIZED"] = pure_policy
     comparison_policies["V7_SEC_COMBINED_OPTIMIZED"] = selected_policy
     full_market = prepare_market(
         factored, start=settings.train_start, end=full_end
@@ -417,10 +487,15 @@ def run_filing_v7_optimization(
         "executions_csv": destination / "executions.csv",
         "latest_scores_csv": destination / "latest_scores.csv",
         "data_audit_csv": destination / "data_audit.csv",
+        "contributions_csv": destination / "contributions.csv",
         "selection_json": destination / "selection.json",
         "manifest_json": destination / "manifest.json",
     }
-    selected_series = ("V7_SEC_100_OPTIMIZED", "V7_SEC_COMBINED_OPTIMIZED")
+    selected_series = tuple(
+        name
+        for name in ("V7_SEC_100_OPTIMIZED", "V7_SEC_COMBINED_OPTIMIZED")
+        if name in comparison_policies
+    )
     signal_frames: list[pd.DataFrame] = []
     execution_frames: list[pd.DataFrame] = []
     latest_frames: list[pd.DataFrame] = []
@@ -464,6 +539,17 @@ def run_filing_v7_optimization(
     atomic_to_csv(pd.concat(execution_frames, ignore_index=True), outputs["executions_csv"], index=False)
     atomic_to_csv(pd.concat(latest_frames, ignore_index=True), outputs["latest_scores_csv"], index=False)
     atomic_to_csv(data_audit, outputs["data_audit_csv"], index=False)
+    # Additive-only: reuses the attribution already computed above
+    # (record_attribution=True) for the selected combined policy's
+    # full-history backtest. Does not change any selection/scoring logic or
+    # existing output -- purely a new read-only report for baseline capture.
+    combined_result = results.get("V7_SEC_COMBINED_OPTIMIZED")
+    contributions = (
+        summarize_ticker_contributions(combined_result, periods)
+        if combined_result is not None and combined_result.attribution is not None
+        else pd.DataFrame()
+    )
+    atomic_to_csv(contributions, outputs["contributions_csv"], index=False)
     selection_payload = {
         "selection_mode": selection_mode,
         "training_period": [settings.train_start, settings.train_end],
@@ -472,7 +558,11 @@ def run_filing_v7_optimization(
             **selected_row.to_dict(),
             **asdict(selected_policy),
         },
-        "selected_pure_sec": {**pure_row.to_dict(), **asdict(pure_policy)},
+        "selected_pure_sec": (
+            {**pure_row.to_dict(), **asdict(pure_policy)}
+            if pure_row is not None and pure_policy is not None
+            else None
+        ),
     }
     _atomic_json(outputs["selection_json"], selection_payload)
     _atomic_json(
@@ -487,7 +577,9 @@ def run_filing_v7_optimization(
             "technical_variant": variant_name,
             "base_v7_params": base_params.as_dict(),
             "selected_combined_policy": asdict(selected_policy),
-            "selected_pure_sec_policy": asdict(pure_policy),
+            "selected_pure_sec_policy": (
+                asdict(pure_policy) if pure_policy is not None else None
+            ),
             "comparison_policies": {
                 name: asdict(policy)
                 for name, policy in comparison_policies.items()
@@ -519,6 +611,91 @@ def run_filing_v7_optimization(
         },
     )
     return FilingV7Artifacts(output_dir=destination, **outputs)
+
+
+def evaluate_holdout(
+    paths: ProjectPaths,
+    settings: ResearchSettings,
+    *,
+    universe_config: dict[str, Any],
+    optimization_config: dict[str, Any],
+    filing_features_path: str | Path,
+    spy_path: str | Path,
+    policy: FilingV7Policy,
+    growth_quality_reconstructor: (
+        Callable[[pd.DataFrame], pd.DataFrame] | None
+    ) = None,
+) -> dict[str, object]:
+    """Evaluate one already-selected policy on the 2025/2026 report-only
+    holdout -- the period genuinely never touched by any selector (Phase
+    3's selectors only ever see settings.training_folds, all inside
+    train_start/train_end).
+
+    Rebuilds the panel independently rather than reusing
+    run_filing_v7_optimization's internal state, since this is meant for a
+    handful of final-candidate evaluations (one per selector), not a hot
+    loop -- correctness and independence from the optimization run's
+    internals matter more here than shaving a few seconds.
+    """
+
+    members = members_from_config(paths, universe_config["universe"])
+    panel, _ = build_panel(members, settings)
+    observed = add_v7_technical_observations(panel)
+    technical = add_v7_technical_factors(observed, settings)
+    variant_name = str(
+        universe_config.get("technical_variant", "V7_3_MA_MACD_OBV_SLOT5")
+    )
+    variant = next(item for item in TECHNICAL_VARIANTS if item.name == variant_name)
+    v7_panel = scoring_panel_for_variant(technical, variant)
+    filing_features = pd.read_csv(filing_features_path)
+    merged = merge_filing_features(v7_panel, filing_features)
+    if growth_quality_reconstructor is not None:
+        merged = growth_quality_reconstructor(merged)
+    factored = add_filing_factors(
+        merged,
+        minimum_cross_section_size=min(
+            settings.minimum_cross_section_size, max(4, len(members) // 2)
+        ),
+    )
+    full_end = str(pd.Timestamp(factored["Date"].max()).date())
+    holdout_start = min(start for start, _ in settings.validation_periods.values())
+    base_params = StrategyParams.from_dict(
+        dict(optimization_config["base_v7_params"])
+    )
+    holdout_signals = signal_day_panel(
+        factored, holdout_start, full_end, settings.rebalance_weekday
+    )
+    _, targets = generate_filing_v7_targets(holdout_signals, base_params, policy)
+    holdout_market = prepare_market(factored, start=holdout_start, end=full_end)
+    result = run_portfolio_backtest(
+        pd.DataFrame(),
+        targets,
+        start=holdout_start,
+        end=full_end,
+        initial_capital=settings.initial_capital,
+        transaction_cost_bps=settings.transaction_cost_bps,
+        prepared_market=holdout_market,
+    )
+    spy_prices = load_sp500_proxy(spy_path)
+    spy_curve = build_single_asset_equity(
+        spy_prices,
+        start=holdout_start,
+        end=full_end,
+        initial_capital=settings.initial_capital,
+    )
+    spy_summary = summarize_equity_curve(spy_curve, start=holdout_start, end=full_end)
+    return {
+        "HoldoutStart": holdout_start,
+        "HoldoutEnd": full_end,
+        "HoldoutROI": result.summary.roi_percent,
+        "HoldoutCAGR": result.summary.cagr_percent,
+        "HoldoutMaxDrawdown": result.summary.max_drawdown_percent,
+        "HoldoutSharpe": result.summary.sharpe_ratio,
+        "HoldoutTurnover": result.summary.annualized_turnover,
+        "SpyHoldoutROI": float(spy_summary["ROI"]),
+        "SpyHoldoutCAGR": float(spy_summary["CAGR"]),
+        "HoldoutExcessROI": result.summary.roi_percent - float(spy_summary["ROI"]),
+    }
 
 
 def _candidate_policies(config: dict[str, Any]) -> list[FilingV7Policy]:
@@ -649,6 +826,64 @@ def _candidate_metrics(
         "ConstraintPenalty": constraint_penalty,
         "Objective": objective,
     }
+
+
+def _fold_metrics(
+    targets: pd.DataFrame,
+    fold_markets: list[tuple[str, str, str, object, dict[str, object]]],
+    *,
+    initial_capital: float,
+    transaction_cost_bps: float,
+) -> dict[str, object]:
+    """One candidate's ROI/CAGR/MDD on each independent walk-forward fold,
+    reusing the already-generated full-train-window targets (portfolio.py
+    filters to each fold's date range internally) and each fold's
+    pre-prepared market. Feeds both Phase 2's data-version comparison and
+    Phase 3's stable-region/consensus/rank-ensemble selectors.
+    """
+
+    row: dict[str, object] = {}
+    fold_rois: list[float] = []
+    fold_cagrs: list[float] = []
+    fold_excess: list[float] = []
+    fold_beats_spy: list[bool] = []
+    spy_fold_cagrs: list[float] = []
+    for name, fold_start, fold_end, fold_market, spy_fold in fold_markets:
+        fold_result = run_portfolio_backtest(
+            pd.DataFrame(),
+            targets,
+            start=fold_start,
+            end=fold_end,
+            initial_capital=initial_capital,
+            transaction_cost_bps=transaction_cost_bps,
+            prepared_market=fold_market,
+        )
+        summary = fold_result.summary
+        excess = summary.roi_percent - float(spy_fold["ROI"])
+        row[f"{name}ROI"] = summary.roi_percent
+        row[f"{name}CAGR"] = summary.cagr_percent
+        row[f"{name}MaxDrawdown"] = summary.max_drawdown_percent
+        row[f"{name}ExcessROI"] = excess
+        row[f"{name}SPYROI"] = float(spy_fold["ROI"])
+        row[f"{name}SPYCAGR"] = float(spy_fold["CAGR"])
+        fold_rois.append(summary.roi_percent)
+        fold_cagrs.append(summary.cagr_percent)
+        fold_excess.append(excess)
+        fold_beats_spy.append(excess > 0)
+        spy_fold_cagrs.append(float(spy_fold["CAGR"]))
+    row["MedianFoldROI"] = float(np.median(fold_rois)) if fold_rois else np.nan
+    row["WorstFoldROI"] = float(np.min(fold_rois)) if fold_rois else np.nan
+    row["MedianFoldCAGR"] = float(np.median(fold_cagrs)) if fold_cagrs else np.nan
+    row["WorstFoldCAGR"] = float(np.min(fold_cagrs)) if fold_cagrs else np.nan
+    row["SPYMedianFoldCAGR"] = (
+        float(np.median(spy_fold_cagrs)) if spy_fold_cagrs else np.nan
+    )
+    row["MedianFoldExcessROI"] = float(np.median(fold_excess)) if fold_excess else np.nan
+    row["FoldWinRate"] = (
+        float(np.mean(fold_beats_spy)) if fold_beats_spy else np.nan
+    )
+    row["FoldCount"] = len(fold_markets)
+    return row
 
 
 def _annual_return_map(

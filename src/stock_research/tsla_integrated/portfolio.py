@@ -72,6 +72,9 @@ def run_integrated_backtest(
         errors="coerce",
     ).to_numpy(dtype=float)
     buys = frame["BuySignal"].fillna(False).to_numpy(dtype=bool)
+    contrarian_buys = frame.get(
+        "ContrarianBuySignal", pd.Series(False, index=frame.index)
+    ).fillna(False).to_numpy(dtype=bool)
     sells = frame["SellSignal"].fillna(False).to_numpy(dtype=bool)
     shorts = frame.get(
         "ShortSignal", pd.Series(False, index=frame.index)
@@ -87,6 +90,11 @@ def run_integrated_backtest(
         action = "HOLD"
         if cash > 0 and short_units == 0:
             cash *= 1 + max(cash_rates[index], 0.0) / 100 / 252
+        elif cash < 0 and shares > 0:
+            # Margin debt from a leveraged contrarian entry (see
+            # contrarian_leverage below) accrues interest the same way a
+            # leveraged short's borrowed notional does.
+            cash += cash * daily_borrow_rate
         if short_units > 0:
             cash -= short_units * close_price * daily_borrow_rate
         if index and shares == 0 and short_units == 0:
@@ -107,8 +115,18 @@ def run_integrated_backtest(
                 initial_long and not initial_position_opened
             ):
                 execution = open_price * buy_cost
-                shares = cash / execution
-                cash = 0.0
+                # contrarian_leverage=1 buys exactly the account's notional
+                # (self-funding); >1 models margin borrowed against the same
+                # capital, applied only to the specific entry path (oversold,
+                # regime-confirmed washouts) with demonstrated edge -- not a
+                # blanket leverage on every buy signal.
+                leverage = (
+                    params.contrarian_leverage
+                    if contrarian_buys[index - 1]
+                    else 1.0
+                )
+                shares = (cash * leverage) / execution
+                cash -= shares * execution
                 entry_price = execution
                 long_peak = execution
                 short_trough = None
@@ -129,7 +147,7 @@ def run_integrated_backtest(
                 held >= params.minimum_hold_sessions and sells[index - 1]
             ):
                 execution = open_price * sell_cost
-                cash = shares * execution
+                cash += shares * execution
                 shares = 0.0
                 entry_price = None
                 long_peak = None

@@ -77,6 +77,15 @@ def test_ticker_attribution_reconciles_daily_equity_and_costs() -> None:
     assert result.attribution["TransactionCost"].sum() == pytest.approx(
         result.executions["TransactionCost"].sum()
     )
+    assert {"TradeNotional", "TradeCashFlow", "TradeShares"}.issubset(
+        result.attribution
+    )
+    final_notional = (
+        result.attribution.sort_values("Date").groupby("Ticker")["EndingNotional"].last().sum()
+    )
+    assert result.attribution["TradeCashFlow"].sum() + final_notional == pytest.approx(
+        result.summary.final_value - result.summary.initial_capital
+    )
 
 
 def test_period_contributions_rank_and_reconcile() -> None:

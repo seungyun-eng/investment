@@ -7,6 +7,7 @@ from stock_research.financial_analysis import dcf_equity_value_from_fcf
 
 from .config import ResearchSettings
 from .data import UniverseMember, load_member_data
+from .point_in_time import DISABLE_IN_STRICT_MODE
 
 FINANCIAL_SIGNAL_COLUMNS = (
     "RevenueGrowthYoY",
@@ -370,7 +371,7 @@ def _build_available_financials(
     eps_growth = _growth_against_absolute(eps_ttm, 4)
     ebitda_growth = _growth_against_absolute(ebitda_ttm, 4)
     operating_margin = operating_income / revenue.replace(0, np.nan)
-    return pd.DataFrame(
+    result = pd.DataFrame(
         {
             "FinancialPeriodEnd": frame["Date"],
             "FinancialAvailableDate": frame["Date"]
@@ -403,6 +404,21 @@ def _build_available_financials(
             "DcfPriceGrowthYoY": _positive_growth(dcf_price, 4),
         }
     ).sort_values("FinancialAvailableDate")
+    if settings.pit_strict:
+        # These raw/derived fields all trace back to a Macrotrends workbook
+        # that carries only a fiscal period-end date, not a real filing or
+        # publication date (see point_in_time.py's classification table and
+        # artifacts/pit_audit/feature_lineage.csv). Disabling them here, at
+        # the source, means every downstream consumer (PeTtm/EvEbitdaTtm/
+        # GrowthAdjustedPe/GrowthAdjustedEvEbitda in build_equity_features,
+        # and the GrowthFactor/QualityFactor ranks in
+        # add_cross_sectional_factors) sees NaN rather than a value with an
+        # invented availability date.
+        disabled = [
+            column for column in DISABLE_IN_STRICT_MODE if column in result.columns
+        ]
+        result[disabled] = np.nan
+    return result
 
 
 def _numeric(frame: pd.DataFrame, names: tuple[str, ...]) -> pd.Series:

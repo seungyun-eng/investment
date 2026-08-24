@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -9,7 +10,11 @@ import pytest
 from stock_research.dashboard import data_collection
 from stock_research.dashboard import today as today_module
 from stock_research.dashboard.state import DashboardState, TickerEntry
-from stock_research.dashboard.today import build_tsla_card, compose_today_payload
+from stock_research.dashboard.today import (
+    _preserve_published_tsla_card,
+    build_tsla_card,
+    compose_today_payload,
+)
 from stock_research.paths import ProjectPaths
 
 
@@ -125,6 +130,39 @@ def test_today_payload_keeps_specialized_tsla_separate_from_top_k() -> None:
     ]
     assert payload["action_count"] == 1
     assert payload["tsla"] is tsla
+
+
+def test_cloud_publish_preserves_but_blocks_tsla_when_research_panel_is_absent(
+    tmp_path,
+) -> None:
+    repo_root = tmp_path / "investment"
+    published = repo_root / "alpha-desk-cloud" / "public" / "data" / "latest_today.json"
+    published.parent.mkdir(parents=True)
+    published.write_text(
+        json.dumps(
+            {
+                "tsla": {
+                    "data_fresh": True,
+                    "position": {"shares": 1.0},
+                    "recommendation": {
+                        "Action": "BUY",
+                        "OrderSide": "BUY",
+                        "OrderEquityFraction": 0.2,
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    paths = SimpleNamespace(repo_root=repo_root, results=tmp_path / "results")
+
+    card = _preserve_published_tsla_card(paths, FileNotFoundError("panel.csv"))
+
+    assert card["data_fresh"] is False
+    assert card["refresh_error"] == "panel.csv"
+    assert card["recommendation"]["UnderlyingActionBeforeFreshnessBlock"] == "BUY"
+    assert card["recommendation"]["Action"] == "NO_ACTION_TSLA_DATA_UNAVAILABLE"
+    assert card["recommendation"]["OrderSide"] is None
     assert payload["ticker_summary"] == [{"ticker": "A", "net_pnl": 20.0}]
     assert payload["execution_policy"] == {
         "name": "WEEKLY_SIGNAL_MONTHLY_FIRST_WEIGHT_RESET",

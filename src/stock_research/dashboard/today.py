@@ -135,6 +135,46 @@ def build_tsla_card(
     }
 
 
+def _preserve_published_tsla_card(paths: ProjectPaths, error: Exception) -> dict[str, Any]:
+    """Keep the independent TSLA panel from blocking rotation publication.
+
+    The TSLA V7.3+V2 card depends on a research result CSV that deliberately
+    is not committed. A clean cloud runner therefore cannot recompute that
+    card yet. Preserve the last deployed card, mark it unavailable/stale, and
+    block any order while the weekly cross-sectional model continues.
+    """
+
+    candidates = [
+        latest_path(paths),
+        paths.repo_root / "alpha-desk-cloud" / "public" / "data" / LATEST_FILENAME,
+    ]
+    for candidate in candidates:
+        if not candidate.exists():
+            continue
+        try:
+            prior = json.loads(candidate.read_text(encoding="utf-8-sig"))
+            card = prior.get("tsla")
+            if not isinstance(card, dict) or not isinstance(card.get("recommendation"), dict):
+                continue
+            # JSON round-trip gives us a deep copy without sharing the imported
+            # build-time payload object.
+            preserved = json.loads(json.dumps(card, ensure_ascii=False))
+            preserved["data_fresh"] = False
+            preserved["refresh_error"] = str(error)
+            recommendation = preserved["recommendation"]
+            if recommendation.get("OrderSide") is not None:
+                recommendation["UnderlyingActionBeforeFreshnessBlock"] = recommendation.get("Action")
+            recommendation["Action"] = "NO_ACTION_TSLA_DATA_UNAVAILABLE"
+            recommendation["OrderSide"] = None
+            recommendation["OrderEquityFraction"] = 0.0
+            recommendation["OrderNotionalAtReferenceClose"] = 0.0
+            recommendation["EstimatedSharesAtReferenceClose"] = 0.0
+            return preserved
+        except (OSError, json.JSONDecodeError):
+            continue
+    raise error
+
+
 def compose_today_payload(
     cross_result: dict[str, Any],
     tsla_card: dict[str, Any],
@@ -162,7 +202,13 @@ def compose_today_payload(
         len(latest_trades)
         + int(
             specialized_action
-            not in {"HOLD", "HOLD_BUY_SPACING", "HOLD_MISSING_LAST_BUY_DATE"}
+            not in {
+                "HOLD",
+                "HOLD_BUY_SPACING",
+                "HOLD_MISSING_LAST_BUY_DATE",
+                "NO_ACTION_STALE_DATA",
+                "NO_ACTION_TSLA_DATA_UNAVAILABLE",
+            }
         )
         + int(macro_alert_fired)
     )
@@ -257,8 +303,11 @@ def run_today(
             end=date.today().isoformat(),
             top_k=state.top_k,
         )
-        tsla_card = build_tsla_card(paths, state)
-        tsla_signal_ledger.append_signal(paths, tsla_card)
+        try:
+            tsla_card = build_tsla_card(paths, state)
+            tsla_signal_ledger.append_signal(paths, tsla_card)
+        except FileNotFoundError as error:
+            tsla_card = _preserve_published_tsla_card(paths, error)
         top_picks = [
             row
             for row in cross_result.get("top15_latest", [])

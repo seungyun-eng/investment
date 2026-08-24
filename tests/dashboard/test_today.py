@@ -130,6 +130,14 @@ def test_today_payload_keeps_specialized_tsla_separate_from_top_k() -> None:
     ]
     assert payload["action_count"] == 1
     assert payload["tsla"] is tsla
+    assert payload["ticker_summary"] == [{"ticker": "A", "net_pnl": 20.0}]
+    assert payload["execution_policy"] == {
+        "name": "WEEKLY_SIGNAL_MONTHLY_FIRST_WEIGHT_RESET",
+        "signal_frequency": "WEEKLY",
+        "weight_reset_frequency": "MONTHLY_FIRST_SIGNAL",
+        "immediate_membership_changes": True,
+        "latest_signal_execution_reason": "MONTHLY_WEIGHT_RESET",
+    }
 
 
 def test_cloud_publish_preserves_but_blocks_tsla_when_research_panel_is_absent(
@@ -163,14 +171,6 @@ def test_cloud_publish_preserves_but_blocks_tsla_when_research_panel_is_absent(
     assert card["recommendation"]["UnderlyingActionBeforeFreshnessBlock"] == "BUY"
     assert card["recommendation"]["Action"] == "NO_ACTION_TSLA_DATA_UNAVAILABLE"
     assert card["recommendation"]["OrderSide"] is None
-    assert payload["ticker_summary"] == [{"ticker": "A", "net_pnl": 20.0}]
-    assert payload["execution_policy"] == {
-        "name": "WEEKLY_SIGNAL_MONTHLY_FIRST_WEIGHT_RESET",
-        "signal_frequency": "WEEKLY",
-        "weight_reset_frequency": "MONTHLY_FIRST_SIGNAL",
-        "immediate_membership_changes": True,
-        "latest_signal_execution_reason": "MONTHLY_WEIGHT_RESET",
-    }
 
 
 def test_refresh_all_prices_switches_only_successful_tickers(

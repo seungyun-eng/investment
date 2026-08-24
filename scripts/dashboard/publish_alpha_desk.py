@@ -16,7 +16,7 @@ import sys
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
-from stock_research.dashboard import today
+from stock_research.dashboard import data_collection, today
 from stock_research.dashboard import state as dashboard_state
 from stock_research.dashboard import tsla_signal_ledger
 from stock_research.dashboard.forward_ledger import LEDGER_FILENAME, LEDGER_RESULTS_FOLDER
@@ -111,6 +111,47 @@ def _write_monitor_universe(paths, state, destination: Path, *, signal_as_of: st
         signalAsOf=signal_as_of,
         count=len(entries),
         entries=entries,
+    )
+
+
+def _prepare_forward_ledger_history(paths) -> None:
+    """Collect the union of every point-in-time forward universe.
+
+    A clean cloud runner starts with only the current universe's prices and
+    filings. The forward ledger must still replay U001/U002 without silently
+    substituting U003, so removed historical members need their own data too.
+    """
+
+    snapshots_dir = (
+        paths.repo_root
+        / "config"
+        / "dashboard_model_registry"
+        / "universe_snapshots"
+    )
+    entries: dict[str, dashboard_state.TickerEntry] = {}
+    for snapshot_path in sorted(snapshots_dir.glob("*.json")):
+        snapshot = dashboard_state.state_from_snapshot(snapshot_path)
+        for entry in snapshot.tickers:
+            entries.setdefault(entry.ticker, entry)
+    if not entries:
+        raise RuntimeError("No forward-ledger universe snapshots found")
+
+    for entry in entries.values():
+        destination = paths.stock_root / "Dashboard Data" / "Prices" / f"{entry.ticker}.csv"
+        if not destination.exists():
+            data_collection.download_price_history(entry.ticker, destination)
+        entry.price_path = f"Dashboard Data/Prices/{entry.ticker}.csv"
+
+    live = dashboard_state.load_state(paths)
+    historical = dashboard_state.DashboardState(
+        top_k=live.top_k,
+        sec_user_agent=live.sec_user_agent,
+        tickers=list(entries.values()),
+    )
+    data_collection.sync_filings_for_dashboard(
+        paths,
+        historical,
+        refresh_metadata=True,
     )
 
 
@@ -302,6 +343,8 @@ def main() -> None:
                 )
             )
             return
+
+        _prepare_forward_ledger_history(paths)
 
         score_output = result_dir / "score_history.json"
         reports_output = result_dir / "company_reports.json"

@@ -1,8 +1,9 @@
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 
 from scripts.dashboard.publish_alpha_desk import (
+    _expected_completed_friday,
     _most_recent_friday,
     _prepare_forward_ledger_history,
     _write_monitor_universe,
@@ -14,6 +15,12 @@ def test_weekly_publisher_targets_the_current_or_prior_friday() -> None:
     assert _most_recent_friday(date(2026, 8, 14)) == date(2026, 8, 14)
     assert _most_recent_friday(date(2026, 8, 15)) == date(2026, 8, 14)
     assert _most_recent_friday(date(2026, 8, 17)) == date(2026, 8, 14)
+
+
+def test_weekly_publisher_does_not_require_friday_signal_before_market_close() -> None:
+    assert _expected_completed_friday(datetime(2026, 9, 11, 12, 20, tzinfo=UTC)) == date(2026, 9, 4)
+    assert _expected_completed_friday(datetime(2026, 9, 11, 20, 0, tzinfo=UTC)) == date(2026, 9, 11)
+    assert _expected_completed_friday(datetime(2026, 9, 12, 7, 23, tzinfo=UTC)) == date(2026, 9, 11)
 
 
 def test_monitor_universe_includes_validated_cached_cik(tmp_path) -> None:

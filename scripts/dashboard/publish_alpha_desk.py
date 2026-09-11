@@ -15,6 +15,7 @@ import subprocess
 import sys
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from stock_research.dashboard import data_collection, today
 from stock_research.dashboard import state as dashboard_state
@@ -69,6 +70,16 @@ def _run_optional(command: list[str], *, cwd: Path, label: str) -> None:
 
 def _most_recent_friday(day: date) -> date:
     return day - timedelta(days=(day.weekday() - 4) % 7)
+
+
+def _expected_completed_friday(now: datetime) -> date:
+    """Return the latest Friday whose New York market session has completed."""
+
+    local = now.astimezone(ZoneInfo("America/New_York"))
+    day = local.date()
+    if local.weekday() == 4 and local.hour < 16:
+        day -= timedelta(days=1)
+    return _most_recent_friday(day)
 
 
 def _write_status(path: Path, **payload: object) -> None:
@@ -165,6 +176,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    run_now = datetime.now(UTC)
     repo_root = Path(__file__).resolve().parents[2]
     app_root = repo_root / "alpha-desk-cloud"
     public_data = app_root / "public" / "data"
@@ -183,7 +195,7 @@ def main() -> None:
     )
 
     if prior_status and not args.force:
-        expected = _most_recent_friday(date.today()).isoformat()
+        expected = _expected_completed_friday(run_now).isoformat()
         # A current weekly signal is no longer sufficient to skip.  Closes move
         # every session and the app bundles price history as a static file, so
         # gating on the signal alone froze the dashboard on Friday's prices for
@@ -254,7 +266,7 @@ def main() -> None:
             # deferred or was already present. D1 is live, so those review
             # results are visible in the app immediately.
             if prior_status and not args.force and not added_tickers and not removed_tickers:
-                expected = _most_recent_friday(date.today()).isoformat()
+                expected = _expected_completed_friday(run_now).isoformat()
                 if prior_status.get("status") == "ok" and str(prior_status.get("signalAsOf", "")) >= expected:
                     request_store.save_decisions(
                         approved_decisions,
@@ -315,7 +327,7 @@ def main() -> None:
                 approved_decisions,
                 effective_signal_date=signal_as_of,
             )
-        expected = _most_recent_friday(date.today()).isoformat()
+        expected = _expected_completed_friday(run_now).isoformat()
         if signal_as_of < expected:
             raise RuntimeError(
                 f"weekly signal is stale: expected at least {expected}, got {signal_as_of}"

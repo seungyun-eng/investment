@@ -400,6 +400,24 @@ def main() -> None:
             ],
             cwd=repo_root,
         )
+        # The first pass may append a genuinely new market date. Replay the
+        # exact cached inputs before publishing so the determinism check is a
+        # same-run verification instead of waiting for the next scheduler run.
+        _run(
+            [
+                sys.executable,
+                "-m",
+                "scripts.dashboard.update_forward_shadow",
+                "--stock-root",
+                str(paths.stock_root),
+                "--cutoff",
+                prices_as_of,
+                "--public-json",
+                str(public_data / "forward_shadow.json"),
+                "--no-refresh-market",
+            ],
+            cwd=repo_root,
+        )
 
         _run_optional(
             [

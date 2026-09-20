@@ -6,7 +6,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from stock_research.dashboard.forward_shadow import COST_BPS, append_immutable, run_accounts
+from stock_research.dashboard.forward_shadow import (
+    COST_BPS,
+    MODEL_MEGA,
+    MODEL_SYSTEMIC,
+    MODEL_V73,
+    append_immutable,
+    comparison_rows,
+    run_accounts,
+)
 
 
 def test_append_immutable_accepts_new_keys_and_same_replay(tmp_path: Path) -> None:
@@ -81,3 +89,29 @@ def test_account_executes_next_open_sells_first_and_marks_daily() -> None:
     assert (marked.reindex(ledger.index, fill_value=0) + ledger.cash).to_numpy() == pytest.approx(
         ledger.nav.to_numpy()
     )
+
+
+def test_model_comparison_includes_held_names_outside_latest_targets() -> None:
+    recommendations = pd.DataFrame(
+        [
+            {"model_id": model_id, "signal_date": pd.Timestamp("2026-09-18"), "Ticker": ticker, "target_weight": 1.0}
+            for model_id, ticker in (
+                (MODEL_SYSTEMIC, "A"),
+                (MODEL_MEGA, "A"),
+                (MODEL_V73, "B"),
+            )
+        ]
+    )
+    holdings = pd.DataFrame(
+        [
+            {"model_id": MODEL_SYSTEMIC, "Date": pd.Timestamp("2026-09-18"), "Ticker": "OLD"},
+            {"model_id": MODEL_MEGA, "Date": pd.Timestamp("2026-09-18"), "Ticker": "OLD"},
+            {"model_id": MODEL_V73, "Date": pd.Timestamp("2026-09-18"), "Ticker": "B"},
+        ]
+    )
+
+    comparison = comparison_rows(recommendations, holdings).set_index("Ticker")
+
+    assert "OLD" in comparison.index
+    assert comparison.loc["OLD", "model_overlap"] == "0/3"
+    assert comparison.loc["OLD", "holdings_overlap_count"] == 2

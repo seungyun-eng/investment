@@ -1255,7 +1255,7 @@ def comparison_rows(recommendations: pd.DataFrame, holdings: pd.DataFrame) -> pd
         )
         h = holdings.loc[holdings.model_id.eq(model_id)]
         held[label] = set(h.loc[pd.to_datetime(h.Date).eq(pd.to_datetime(h.Date).max()), "Ticker"])
-    union = sorted(set().union(*latest.values()))
+    union = sorted(set().union(*latest.values(), *held.values()))
     as_of_date = (
         pd.to_datetime(holdings.Date).max()
         if len(holdings)

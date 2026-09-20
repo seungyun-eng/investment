@@ -386,6 +386,20 @@ def main() -> None:
             ],
             cwd=repo_root,
         )
+        _run(
+            [
+                sys.executable,
+                "-m",
+                "scripts.dashboard.update_forward_shadow",
+                "--stock-root",
+                str(paths.stock_root),
+                "--cutoff",
+                prices_as_of,
+                "--public-json",
+                str(public_data / "forward_shadow.json"),
+            ],
+            cwd=repo_root,
+        )
 
         _run_optional(
             [

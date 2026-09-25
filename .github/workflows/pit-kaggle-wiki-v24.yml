@@ -1,0 +1,30 @@
+name: PIT V24 Kaggle WIKI Prices probe
+
+on:
+  push:
+    branches: [chatgpt-pit-qstk-v35]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download public Kaggle WIKI Prices archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          URL="https://www.kaggle.com/api/v1/datasets/download/marketneutral/quandl-wiki-prices-us-equites"
+          code=$(curl -L --retry 2 --connect-timeout 20 -w "%{http_code}" -o /tmp/wiki.zip "$URL")
+          echo "http_code=$code" | tee out/probe.txt
+          stat -c "bytes=%s" /tmp/wiki.zip | tee -a out/probe.txt
+          file /tmp/wiki.zip | tee -a out/probe.txt
+          unzip -l /tmp/wiki.zip | head -100 | tee out/zip_list.txt || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pit-v24-kaggle-wiki-probe
+          path: out/
+          retention-days: 7

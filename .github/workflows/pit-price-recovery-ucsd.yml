@@ -14,34 +14,28 @@ permissions:
 jobs:
   recover:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download public historical stock archive
+      - name: Fetch survivorship-free WIKI-derived S&P data
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p work extracted selected
-          url='https://raw.githubusercontent.com/sryza/aas/master/ch09-risk/data/stocks.zip'
-          echo "$url" > work/source_url.txt
-          curl -fL --retry 4 --retry-delay 2 "$url" -o work/stocks.zip
-          ls -lh work/stocks.zip
-          sha256sum work/stocks.zip | tee work/stocks.zip.sha256
-          unzip -q work/stocks.zip -d extracted
-          find extracted -type f | sort > work/all_files.txt
-          echo "Archive files: $(wc -l < work/all_files.txt)"
-          head -n 20 work/all_files.txt
+          git clone --depth 1 https://github.com/teddykoker/survivorship-free-spy.git source
+          mkdir -p selected
+          git -C source rev-parse HEAD | tee selected/source_commit.txt
+          echo 'https://github.com/teddykoker/survivorship-free-spy' > selected/source_url.txt
 
-      - name: Extract PIT blocker tickers only
+      - name: Extract PIT blocker tickers
         shell: bash
         run: |
           set -euo pipefail
           blockers='NSM RSH MEE PETM CDAY CSRA NOVL AYE ENDP MDP EK ODP GMCR PTV EVHC CBE DWDP MIL STR XTO MMI WCG ANR BJS SBNY RX CPGX CVG DYN BXLT JOYG SGP CTX RE CMCSK ESV ACAS JNY DLPH EP CPWR GENZ KG'
           printf 'ticker,status,source_file,rows,first_date,last_date,sha256\n' > selected/manifest.csv
           for t in $blockers; do
-            f=$(find extracted -type f -iname "${t}.csv" | head -n 1 || true)
-            if [ -n "$f" ]; then
+            f="source/survivorship-free/data/${t}.csv"
+            if [ -f "$f" ]; then
               cp "$f" "selected/${t}.csv"
               rows=$(awk 'END{print NR-1}' "$f")
               first=$(awk -F, 'NR==2 {gsub("\\r","",$1); print $1; exit}' "$f")
@@ -52,36 +46,28 @@ jobs:
               printf '%s,NOT_FOUND,,0,,,\n' "$t" >> selected/manifest.csv
             fi
           done
-          cp work/source_url.txt selected/
-          cp work/stocks.zip.sha256 selected/
           cat selected/manifest.csv
 
-      - name: Validate CSV schemas
+      - name: Validate CSVs
         shell: python
         run: |
           import csv, glob, json, os
-          out = []
+          out=[]
           for p in sorted(glob.glob("selected/*.csv")):
-              if p.endswith("manifest.csv"):
-                  continue
-              with open(p, newline="", encoding="utf-8-sig", errors="replace") as f:
-                  r = csv.reader(f)
-                  header = next(r, [])
-              lower = [x.strip().lower() for x in header]
-              required = {"date","open","high","low","close","volume"}
-              out.append({
-                  "file": os.path.basename(p),
-                  "header": header,
-                  "required_ohlcv_present": required.issubset(set(lower)),
-              })
+              if p.endswith("manifest.csv"): continue
+              with open(p,newline="",encoding="utf-8-sig",errors="replace") as f:
+                  r=csv.reader(f); header=next(r,[])
+              lower=[x.strip().lower() for x in header]
+              req={"date","open","high","low","close","volume"}
+              out.append({"file":os.path.basename(p),"header":header,"required_ohlcv_present":req.issubset(set(lower))})
           with open("selected/schema_validation.json","w") as f:
-              json.dump(out, f, indent=2)
-          print(json.dumps(out, indent=2))
+              json.dump(out,f,indent=2)
+          print(json.dumps(out,indent=2))
 
-      - name: Upload recovered blocker prices
+      - name: Upload recovered WIKI blocker prices
         uses: actions/upload-artifact@v4
         with:
-          name: pit-public-blocker-prices
+          name: pit-wiki-blocker-prices
           path: selected/
           if-no-files-found: error
           retention-days: 7

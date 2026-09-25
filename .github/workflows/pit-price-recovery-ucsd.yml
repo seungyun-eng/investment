@@ -18,43 +18,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download UCSD public historical stock archive
+      - name: Download public historical stock archive
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p work extracted selected
-          urls=(
-            'https://mas-dse-open.s3.amazonaws.com/spdata_csv.tgz'
-            'https://s3.amazonaws.com/mas-dse-open/spdata_csv.tgz'
-            'https://mas-dse-open.s3.amazonaws.com/Stocks/spdata_csv.tgz'
-            'https://s3.amazonaws.com/mas-dse-open/Stocks/spdata_csv.tgz'
-          )
-          : > work/download_attempts.txt
-          ok=0
-          for u in "${urls[@]}"; do
-            echo "TRY $u" | tee -a work/download_attempts.txt
-            code=$(curl -L -A 'Mozilla/5.0' --connect-timeout 20 --max-time 300 -w '%{http_code}' -o work/spdata_csv.tgz.tmp "$u" 2>>work/download_attempts.txt || true)
-            echo "HTTP $code" | tee -a work/download_attempts.txt
-            if [ "$code" = "200" ] && [ -s work/spdata_csv.tgz.tmp ]; then
-              mv work/spdata_csv.tgz.tmp work/spdata_csv.tgz
-              echo "$u" > work/source_url.txt
-              ok=1
-              break
-            fi
-            rm -f work/spdata_csv.tgz.tmp
-          done
-          cat work/download_attempts.txt
-          if [ "$ok" != "1" ]; then
-            echo "No UCSD archive URL succeeded" >&2
-            exit 2
-          fi
-          file work/spdata_csv.tgz
-          ls -lh work/spdata_csv.tgz
-          sha256sum work/spdata_csv.tgz | tee work/spdata_csv.tgz.sha256
-          tar -tzf work/spdata_csv.tgz | head -n 30 || true
-          tar -xzf work/spdata_csv.tgz -C extracted
+          url='https://raw.githubusercontent.com/sryza/aas/master/ch09-risk/data/stocks.zip'
+          echo "$url" > work/source_url.txt
+          curl -fL --retry 4 --retry-delay 2 "$url" -o work/stocks.zip
+          ls -lh work/stocks.zip
+          sha256sum work/stocks.zip | tee work/stocks.zip.sha256
+          unzip -q work/stocks.zip -d extracted
           find extracted -type f | sort > work/all_files.txt
           echo "Archive files: $(wc -l < work/all_files.txt)"
+          head -n 20 work/all_files.txt
 
       - name: Extract PIT blocker tickers only
         shell: bash
@@ -76,7 +53,7 @@ jobs:
             fi
           done
           cp work/source_url.txt selected/
-          cp work/spdata_csv.tgz.sha256 selected/
+          cp work/stocks.zip.sha256 selected/
           cat selected/manifest.csv
 
       - name: Validate CSV schemas
@@ -104,7 +81,7 @@ jobs:
       - name: Upload recovered blocker prices
         uses: actions/upload-artifact@v4
         with:
-          name: pit-ucsd-blocker-prices
+          name: pit-public-blocker-prices
           path: selected/
           if-no-files-found: error
           retention-days: 7

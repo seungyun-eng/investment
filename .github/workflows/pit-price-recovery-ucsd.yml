@@ -14,7 +14,7 @@ permissions:
 jobs:
   recover:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -23,10 +23,35 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p work extracted selected
-          curl -fL --retry 4 --retry-delay 3 \
-            'https://mas-dse-open.s3.amazonaws.com/Stocks/spdata_csv.tgz' \
-            -o work/spdata_csv.tgz
+          urls=(
+            'https://mas-dse-open.s3.amazonaws.com/spdata_csv.tgz'
+            'https://s3.amazonaws.com/mas-dse-open/spdata_csv.tgz'
+            'https://mas-dse-open.s3.amazonaws.com/Stocks/spdata_csv.tgz'
+            'https://s3.amazonaws.com/mas-dse-open/Stocks/spdata_csv.tgz'
+          )
+          : > work/download_attempts.txt
+          ok=0
+          for u in "${urls[@]}"; do
+            echo "TRY $u" | tee -a work/download_attempts.txt
+            code=$(curl -L -A 'Mozilla/5.0' --connect-timeout 20 --max-time 300 -w '%{http_code}' -o work/spdata_csv.tgz.tmp "$u" 2>>work/download_attempts.txt || true)
+            echo "HTTP $code" | tee -a work/download_attempts.txt
+            if [ "$code" = "200" ] && [ -s work/spdata_csv.tgz.tmp ]; then
+              mv work/spdata_csv.tgz.tmp work/spdata_csv.tgz
+              echo "$u" > work/source_url.txt
+              ok=1
+              break
+            fi
+            rm -f work/spdata_csv.tgz.tmp
+          done
+          cat work/download_attempts.txt
+          if [ "$ok" != "1" ]; then
+            echo "No UCSD archive URL succeeded" >&2
+            exit 2
+          fi
+          file work/spdata_csv.tgz
+          ls -lh work/spdata_csv.tgz
           sha256sum work/spdata_csv.tgz | tee work/spdata_csv.tgz.sha256
+          tar -tzf work/spdata_csv.tgz | head -n 30 || true
           tar -xzf work/spdata_csv.tgz -C extracted
           find extracted -type f | sort > work/all_files.txt
           echo "Archive files: $(wc -l < work/all_files.txt)"
@@ -50,6 +75,8 @@ jobs:
               printf '%s,NOT_FOUND,,0,,,\n' "$t" >> selected/manifest.csv
             fi
           done
+          cp work/source_url.txt selected/
+          cp work/spdata_csv.tgz.sha256 selected/
           cat selected/manifest.csv
 
       - name: Validate CSV schemas
@@ -72,9 +99,6 @@ jobs:
               })
           with open("selected/schema_validation.json","w") as f:
               json.dump(out, f, indent=2)
-          bad = [x for x in out if not x["required_ohlcv_present"]]
-          if bad:
-              print("Schema warnings:", bad)
           print(json.dumps(out, indent=2))
 
       - name: Upload recovered blocker prices

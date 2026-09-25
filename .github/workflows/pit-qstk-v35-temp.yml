@@ -1,0 +1,85 @@
+name: PIT QSTK V35 temp bridge
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  qstk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch manifest and verified QSTK intervals
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out/raw_full out/filtered out/receipts
+          curl -fsSL "https://raw.githubusercontent.com/seungyun-eng/investment/chatgpt-pit-qstk-v35/tmp/pit_qstk_manifest_v35.txt" -o /tmp/manifest.txt
+          python - <<'PY'
+          import csv, hashlib, json, pathlib, urllib.request, re
+          out = pathlib.Path("out")
+          receipts = []
+          repo = "https://raw.githubusercontent.com/QuantSoftware/QuantSoftwareToolkit/master/"
+          with open("/tmp/manifest.txt", encoding="utf-8") as f:
+              for line in f:
+                  line=line.strip()
+                  if not line:
+                      continue
+                  security_id,ticker,fileticker,start,end,path,expected_blob,expected_rows=line.split("|")
+                  url=repo+path
+                  data=urllib.request.urlopen(url, timeout=60).read()
+                  blob = hashlib.sha1(b"blob "+str(len(data)).encode()+b"\0"+data).hexdigest()
+                  if blob != expected_blob:
+                      raise SystemExit(f"blob mismatch {ticker}: {blob} != {expected_blob}")
+                  raw_path=out/"raw_full"/f"{fileticker}.csv"
+                  raw_path.write_bytes(data)
+                  rows=list(csv.DictReader(data.decode("utf-8").splitlines()))
+                  filtered=[]
+                  for row in rows:
+                      d=(row.get("Date") or "").strip()
+                      vals=[(row.get(k) or "").strip() for k in ["Open","High","Low","Close","Volume"]]
+                      if start <= d <= end and all(v and v.lower()!="nan" for v in vals):
+                          filtered.append(row)
+                  filtered.sort(key=lambda r:r["Date"])
+                  exp=int(expected_rows)
+                  if len(filtered)!=exp:
+                      raise SystemExit(f"row mismatch {ticker}: {len(filtered)} != {exp}")
+                  safe=re.sub(r"[^A-Za-z0-9_.-]+","_",security_id)
+                  fp=out/"filtered"/f"{safe}__{ticker}.csv"
+                  fields=["Date","Open","High","Low","Close","Volume","Adj Close"]
+                  with fp.open("w",newline="",encoding="utf-8") as g:
+                      w=csv.DictWriter(g,fieldnames=fields,extrasaction="ignore")
+                      w.writeheader()
+                      w.writerows(filtered)
+                  receipts.append({
+                      "effective_security_id":security_id,
+                      "ticker":ticker,
+                      "qstk_file_ticker":fileticker,
+                      "start":start,
+                      "end_marker":end,
+                      "qstk_repo_path":path,
+                      "expected_git_blob_sha":expected_blob,
+                      "actual_git_blob_sha":blob,
+                      "filtered_rows":len(filtered),
+                      "expected_filtered_rows":exp,
+                      "first_date":filtered[0]["Date"] if filtered else None,
+                      "last_date":filtered[-1]["Date"] if filtered else None,
+                      "raw_sha256":hashlib.sha256(data).hexdigest(),
+                      "filtered_sha256":hashlib.sha256(fp.read_bytes()).hexdigest(),
+                      "status":"VERIFIED_LOCAL_ARTIFACT_READY"
+                  })
+          (out/"receipts"/"qstk_ingest_receipts.json").write_text(json.dumps(receipts,indent=2),encoding="utf-8")
+          with (out/"receipts"/"qstk_ingest_receipts.csv").open("w",newline="",encoding="utf-8") as f:
+              w=csv.DictWriter(f,fieldnames=list(receipts[0]))
+              w.writeheader()
+              w.writerows(receipts)
+          print("verified",len(receipts),"files",sum(r["filtered_rows"] for r in receipts),"rows")
+          PY
+      - name: Upload verified QSTK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pit-qstk-v35
+          path: out/
+          retention-days: 7

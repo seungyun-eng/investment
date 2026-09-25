@@ -1,0 +1,71 @@
+name: PIT V24 Stooq archival probe
+
+on:
+  push:
+    branches: [chatgpt-pit-qstk-v35]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe Stooq historical CSV
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out/files out/receipts
+          python - <<'PY'
+          import csv, hashlib, io, json, pathlib, urllib.parse, urllib.request
+          symbols = {
+            "NSM":["nsm.us"],"MEE":["mee.us"],"PETM":["petm.us"],"CDAY":["cday.us","day.us"],
+            "CSRA":["csra.us"],"ENDP":["endp.us"],"GMCR":["gmcr.us"],"EVHC":["evhc.us"],
+            "DWDP":["dwdp.us"],"MMI":["mmi.us"],"WCG":["wcg.us"],"ANR":["anr.us","anrzq.us"],
+            "SBNY":["sbny.us"],"RX":["rx.us"],"CPGX":["cpgx.us"],"BXLT":["bxlt.us"],
+            "JOYG":["joyg.us","joy.us"],"CTX":["ctx.us"],"RE":["re.us","eg.us"],
+            "CMCSK":["cmcsk.us","cmcsa.us"],"ESV":["esv.us","val.us"],"DLPH":["dlph.us","aptv.us"],
+            "CBE":["cbe.us"],"SGP":["sgp.us"],"EP":["ep.us"],"CPWR":["cpwr.us"]
+          }
+          out=pathlib.Path("out/files")
+          receipts=[]
+          for logical,cands in symbols.items():
+              for sym in cands:
+                  url=f"https://stooq.com/q/d/l/?s={urllib.parse.quote(sym)}&d1=19900101&d2=20260924&i=d"
+                  req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0"})
+                  try:
+                      data=urllib.request.urlopen(req,timeout=30).read()
+                  except Exception as e:
+                      receipts.append({"logical_ticker":logical,"symbol":sym,"status":"HTTP_ERROR","detail":repr(e)})
+                      continue
+                  text=data.decode("utf-8-sig",errors="replace")
+                  rows=list(csv.DictReader(io.StringIO(text))) if text.startswith("Date,") else []
+                  valid=[]
+                  for r in rows:
+                      vals=[(r.get(k) or "").strip() for k in ["Open","High","Low","Close","Volume"]]
+                      if (r.get("Date") or "").strip() and all(v and v.lower()!="nan" for v in vals):
+                          valid.append(r)
+                  status="FOUND" if valid else "NO_USABLE_CSV"
+                  fp=None
+                  if valid:
+                      fp=out/f"{logical}__{sym.replace('.','_')}.csv"
+                      fp.write_bytes(data)
+                  receipts.append({
+                      "logical_ticker":logical,"symbol":sym,"status":status,"url":url,
+                      "bytes":len(data),"sha256":hashlib.sha256(data).hexdigest(),
+                      "rows":len(rows),"valid_rows":len(valid),
+                      "first_date":valid[0]["Date"] if valid else None,
+                      "last_date":valid[-1]["Date"] if valid else None,
+                      "response_prefix":text[:120].replace("\n"," ")
+                  })
+          pathlib.Path("out/receipts/stooq_probe.json").write_text(json.dumps(receipts,indent=2),encoding="utf-8")
+          fields=sorted({k for r in receipts for k in r})
+          with open("out/receipts/stooq_probe.csv","w",newline="",encoding="utf-8") as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(receipts)
+          print("found",sum(r["status"]=="FOUND" for r in receipts),"of",len(receipts))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pit-v24-stooq-probe
+          path: out/
+          retention-days: 7

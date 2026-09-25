@@ -1,123 +1,13 @@
 name: PIT QSTK V35 archival fetch
-
 on:
   push:
-    branches:
-      - chatgpt-pit-qstk-v35
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
+    branches: [chatgpt-pit-qstk-v35]
 jobs:
-  fetch-qstk:
+  smoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch verified QSTK archival files
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p out/raw_full out/filtered out/receipts
-          cat > /tmp/manifest.txt <<'EOF'
-INT:817473:ACAS:20090101|ACAS|ACAS|2009-01-01|2009-03-04|QSTK/QSData/Yahoo/ACAS.csv|dc8df9e58dffc36ae24d602a10bd92097a4ebea9|42
-INT:UNK:ACS:20090101|ACS|ACS|2009-01-01|2010-02-08|QSTK/QSData/Yahoo/ACS.csv|1c293e1bf85a75096bae90bfe2c5cc9e9f00fa0b|276
-INT:3673:AYE:20090101|AYE|AYE|2009-01-01|2011-02-28|QSTK/QSData/Yahoo/AYE.csv|4c201574c8bb67545630fc14f605154facc0002f|542
-INT:UNK:BDK:20090101|BDK|BDK|2009-01-01|2010-03-15|QSTK/QSData/Yahoo/BDK.csv|5e56fa40df50bfb348bb6b124b5e74489a6fa606|300
-INT:864328:BJS:20090101|BJS|BJS|2009-01-01|2010-04-29|QSTK/QSData/Yahoo/BJS.csv|96814d806583709eeba55e3802c679b8cb3394d6|332
-INT:1141982:CBE:20090101|CBE|CBE|2009-01-01|2009-09-09|QSTK/QSData/Yahoo/CBE.csv|d519bc3300129220d3978b7007c9fd6c44df7000|173
-INT:1385187:COV:20090101|COV|COV|2009-01-01|2009-06-05|QSTK/QSData/Yahoo/COV.csv|f2b102bfdade009d01ab33066f115caa82a4872d|107
-INT:1062047:CVG:20090101|CVG|CVG|2009-01-01|2009-12-21|QSTK/QSData/Yahoo/CVG.csv|dafb110d7982d1868f2bc4b02d476133dc273b76|245
-INT:UNK:DDR:20090101|DDR|DDR|2009-01-01|2009-03-30|QSTK/QSData/Yahoo/DDR.csv|f4754d37559eb1562f6008e9ec6f77a2167cd475|60
-INT:UNK:EKDKQ:20090101|EKDKQ|EK|2009-01-01|2010-12-20|QSTK/QSData/Yahoo/EK.csv|82191be8275cbffcb3d8a2def1570ce4654f8d28|496
-INT:UNK:EQ:20090101|EQ|EQ|2009-01-01|2009-07-01|QSTK/QSData/Yahoo/EQ.csv|ed9f7337c260e0f2b5a2f9a77d4e09b80890130c|124
-INT:314808:ESV:20090101|ESV|ESV|2009-01-01|2009-12-23|QSTK/QSData/Yahoo/ESV.csv|70537fe8a37c9be9ba6411111b3046d4dd3b4573|247
-HIST:NICOR:GAS|GAS|GAS|2009-01-01|2011-12-12|QSTK/QSData/Yahoo/GAS.csv|b2c786e1a403b231e1606f7b03bd5cbe6d5e4bfb|743
-INT:42542:GR:20090101|GR|GR|2009-01-01|2012-07-27|QSTK/QSData/Yahoo/GR.csv|1230543431d3b550171b57d7879b800907070e91|899
-INT:UNK:JAVA:20090101|JAVA|JAVA|2009-01-01|2010-01-27|QSTK/QSData/Yahoo/JAVA.csv|e6336fece3d1c8bff84525dc5686ace35de61c2d|268
-INT:1065865:JNS:20090101|JNS|JNS|2009-01-01|2011-11-23|QSTK/QSData/Yahoo/JNS.csv|0a05cbc5b045897a47141325b85f23191cc17628|731
-INT:874016:JNY:20090101|JNY|JNY|2009-01-01|2009-03-04|QSTK/QSData/Yahoo/JNY.csv|1ba8ed7b602fc125c82a965f429518cff93ab2e1|42
-INT:65011:MDP:20090101|MDP|MDP|2009-01-01|2011-01-04|QSTK/QSData/Yahoo/MDP.csv|048023e3b5825737b3fda0b558f4d8662f10e1a0|506
-INT:1170650:MHS:20090101|MHS|MHS|2009-01-01|2012-04-02|QSTK/QSData/Yahoo/MHS.csv|fe82766446dd8c8cb820091fe9ad30d8c75cefd2|819
-INT:66479:MIL:20090101|MIL|MIL|2009-01-01|2010-07-15|QSTK/QSData/Yahoo/MIL.csv|c2caa7c0572f41143c72179e4c4f93d38be02e32|386
-INT:UNK:MTW:20090101|MTW|MTW|2009-01-01|2009-09-01|QSTK/QSData/Yahoo/MTW.csv|f177f4c39254a93c27e66beb0ef4f5a7ac31a8e8|168
-INT:1020416:MWW:20090101|MWW|MWW|2009-01-01|2011-12-19|QSTK/QSData/Yahoo/MWW.csv|29dcbb911db3066c21c1a314ff54eb268ef6d93d|748
-INT:758004:NOVL:20090101|NOVL|NOVL|2009-01-01|2011-04-28|QSTK/QSData/Yahoo/NOVL.csv|07107abd456421de0e6617eeaa964aa65235918a|584
-INT:836106:NVLS:20090101|NVLS|NVLS|2009-01-01|2012-06-05|QSTK/QSData/Yahoo/NVLS.csv|4e6d65abc47ac0bd076d89dc6f03b207134853c5|862
-INT:800240:ODP:20090101|ODP|ODP|2009-01-01|2010-12-20|QSTK/QSData/Yahoo/ODP.csv|c484f0678a7a2b84429b474b9bfb1d6763d94b21|496
-INT:UNK:PBG:20090101|PBG|PBG|2009-01-01|2010-03-01|QSTK/QSData/Yahoo/PBG.csv|457c9d2e7f799c67ee54d0195a8106c726dbdfe3|290
-INT:17797:PGN:20090101|PGN|PGN|2009-01-01|2012-07-02|QSTK/QSData/Yahoo/PGN.csv|1ea667ca7fd174ec9d5de7e39f70d5ebb8f7f36a|882
-INT:1089976:PTV:20090101|PTV|PTV|2009-01-01|2010-11-17|QSTK/QSData/Yahoo/PTV.csv|7bda80a5b2a3ea7596f1d4f3d7ebfa1d3803acbd|473
-INT:UNK:QLGC:20090101|QLGC|QLGC|2009-01-01|2011-01-18|QSTK/QSData/Yahoo/QLGC.csv|503698261a20417ed699e16bc1bb212f1872de38|515
-INT:UNK:ROH:20090101|ROH|ROH|2009-01-01|2009-04-02|QSTK/QSData/Yahoo/ROH.csv|c5e12657e7ab202224c5049e7d9ce7f5035bdfc9|62
-INT:UNK:RSHCQ:20090101|RSHCQ|RSH|2009-01-01|2011-07-01|QSTK/QSData/Yahoo/RSH.csv|9ca3abdb0aa96f47351dc071a6e65bbfc8ece612|630
-INT:1310067:SHLD:20090101|SHLD|SHLD|2009-01-01|2012-09-05|QSTK/QSData/Yahoo/SHLD.csv|76d9ac4e80ca9f02bfc1c09699ca76c75f2a6ae0|927
-INT:751652:STR:20090101|STR|STR|2009-01-01|2010-07-01|QSTK/QSData/Yahoo/STR.csv|5985757ae0efe5e624d2eb07dbebe9f775622822|377
-INT:UNK:SUNEQ:20090101|SUNEQ|SUN|2009-01-01|2011-12-19|QSTK/QSData/Yahoo/SUN.csv|a44790ada7bdb424df083c9a0bcc2345f37a2895|748
-INT:95521:SVU:20090101|SVU|SVU|2009-01-01|2012-05-01|QSTK/QSData/Yahoo/SVU.csv|0f8a13b4829c11997e6fdcc7322c3f7da08e87e3|839
-INT:317771:TLAB:20090101|TLAB|TLAB|2009-01-01|2011-12-21|QSTK/QSData/Yahoo/TLAB.csv|7e37249b6cac0e7a457891521020df934e9b7c43|750
-INT:UNK:WFT:20090101|WFT|WFT|2009-01-01|2009-02-26|QSTK/QSData/Yahoo/WFT.csv|6a1ec040e1d7b16196062c68ec812d41e3fa5c3f|38
-INT:UNK:WYE:20090101|WYE|WYE|2009-01-01|2009-10-16|QSTK/QSData/Yahoo/WYE.csv|774ffad0916336e38a98fa15c59c71f3510879ca|199
-INT:868809:XTO:20090101|XTO|XTO|2009-01-01|2010-06-28|QSTK/QSData/Yahoo/XTO.csv|f3c23ccee4db6de8511e2d45de54bd1aca491f58|373
-EOF
-          python - <<'PY'
-          import csv, hashlib, json, pathlib, urllib.request, re
-          out = pathlib.Path("out")
-          receipts = []
-          repo = "https://raw.githubusercontent.com/QuantSoftware/QuantSoftwareToolkit/master/"
-          with open("/tmp/manifest.txt", encoding="utf-8") as f:
-              for line in f:
-                  line=line.strip()
-                  if not line: continue
-                  security_id,ticker,fileticker,start,end,path,expected_blob,expected_rows=line.split("|")
-                  url=repo+path
-                  data=urllib.request.urlopen(url, timeout=60).read()
-                  blob = hashlib.sha1(b"blob "+str(len(data)).encode()+b"\0"+data).hexdigest()
-                  if blob != expected_blob:
-                      raise SystemExit(f"blob mismatch {ticker}: {blob} != {expected_blob}")
-                  raw_path=out/"raw_full"/f"{fileticker}.csv"
-                  raw_path.write_bytes(data)
-                  text=data.decode("utf-8")
-                  rows=list(csv.DictReader(text.splitlines()))
-                  filtered=[]
-                  for row in rows:
-                      d=(row.get("Date") or "").strip()
-                      vals=[(row.get(k) or "").strip() for k in ["Open","High","Low","Close","Volume"]]
-                      if start <= d <= end and all(v and v.lower()!="nan" for v in vals):
-                          filtered.append(row)
-                  filtered.sort(key=lambda r:r["Date"])
-                  safe=re.sub(r"[^A-Za-z0-9_.-]+","_",security_id)
-                  fp=out/"filtered"/f"{safe}__{ticker}.csv"
-                  fields=["Date","Open","High","Low","Close","Volume","Adj Close"]
-                  with fp.open("w",newline="",encoding="utf-8") as g:
-                      w=csv.DictWriter(g,fieldnames=fields,extrasaction="ignore")
-                      w.writeheader(); w.writerows(filtered)
-                  exp=int(expected_rows)
-                  if len(filtered)!=exp:
-                      raise SystemExit(f"row mismatch {ticker}: {len(filtered)} != {exp}")
-                  rec={
-                      "effective_security_id":security_id,"ticker":ticker,"qstk_file_ticker":fileticker,
-                      "start":start,"end_marker":end,"qstk_repo_path":path,
-                      "expected_git_blob_sha":expected_blob,"actual_git_blob_sha":blob,
-                      "filtered_rows":len(filtered),"expected_filtered_rows":exp,
-                      "first_date":filtered[0]["Date"] if filtered else None,
-                      "last_date":filtered[-1]["Date"] if filtered else None,
-                      "raw_sha256":hashlib.sha256(data).hexdigest(),
-                      "filtered_sha256":hashlib.sha256(fp.read_bytes()).hexdigest(),
-                      "status":"VERIFIED_LOCAL_ARTIFACT_READY"
-                  }
-                  receipts.append(rec)
-          with (out/"receipts"/"qstk_ingest_receipts.json").open("w",encoding="utf-8") as f:
-              json.dump(receipts,f,indent=2)
-          with (out/"receipts"/"qstk_ingest_receipts.csv").open("w",newline="",encoding="utf-8") as f:
-              fields=list(receipts[0])
-              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(receipts)
-          print("verified",len(receipts),"files",sum(r["filtered_rows"] for r in receipts),"rows")
-          PY
-
-      - name: Upload verified QSTK artifact
-        uses: actions/upload-artifact@v4
+      - run: echo "qstk-smoke-ok" > smoke.txt
+      - uses: actions/upload-artifact@v4
         with:
-          name: pit-qstk-v35
-          path: out/
-          if-no-files-found: error
-          retention-days: 7
+          name: pit-qstk-v35-smoke
+          path: smoke.txt

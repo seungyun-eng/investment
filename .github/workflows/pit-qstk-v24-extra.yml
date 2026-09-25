@@ -1,0 +1,71 @@
+name: PIT QSTK V24 extra archival extraction
+
+on:
+  push:
+    branches: [chatgpt-pit-qstk-v35]
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch additional QSTK archival intervals
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out/raw_full out/filtered out/receipts
+          python - <<'PY'
+          import csv, hashlib, io, json, pathlib, re, urllib.request
+          specs = [
+              ("ANR","2008-06-23","2011-06-02"),
+              ("DYN","2000-10-03","2009-12-21"),
+              ("SGP","1996-01-02","2009-11-04"),
+              ("EP","1999-10-26","2012-05-25"),
+              ("CPWR","1999-01-04","2012-01-03"),
+              ("GENZ","2001-12-14","2011-04-04"),
+              ("KG","2000-10-03","2010-12-20"),
+          ]
+          base="https://raw.githubusercontent.com/QuantSoftware/QuantSoftwareToolkit/master/QSTK/QSData/Yahoo/"
+          out=pathlib.Path("out")
+          receipts=[]
+          for ticker,start,end in specs:
+              url=base+ticker+".csv"
+              data=urllib.request.urlopen(url,timeout=60).read()
+              (out/"raw_full"/f"{ticker}.csv").write_bytes(data)
+              text=data.decode("utf-8-sig")
+              rows=list(csv.DictReader(io.StringIO(text)))
+              valid=[]
+              for row in rows:
+                  d=(row.get("Date") or "").strip()
+                  vals=[(row.get(k) or "").strip() for k in ["Open","High","Low","Close","Volume"]]
+                  if start <= d <= end and all(v and v.lower()!="nan" for v in vals):
+                      valid.append(row)
+              valid.sort(key=lambda r:r["Date"])
+              fp=out/"filtered"/f"{ticker}.csv"
+              fields=["Date","Open","High","Low","Close","Volume","Adj Close"]
+              with fp.open("w",newline="",encoding="utf-8") as f:
+                  w=csv.DictWriter(f,fieldnames=fields,extrasaction="ignore")
+                  w.writeheader(); w.writerows(valid)
+              receipts.append({
+                  "ticker":ticker,"requested_start":start,"requested_end":end,
+                  "source_url":url,
+                  "git_blob_sha":hashlib.sha1(b"blob "+str(len(data)).encode()+b"\0"+data).hexdigest(),
+                  "raw_sha256":hashlib.sha256(data).hexdigest(),
+                  "filtered_sha256":hashlib.sha256(fp.read_bytes()).hexdigest(),
+                  "raw_rows":len(rows),"filtered_valid_rows":len(valid),
+                  "first_date":valid[0]["Date"] if valid else None,
+                  "last_date":valid[-1]["Date"] if valid else None,
+                  "status":"ARCHIVAL_SOURCE_MATERIALIZED"
+              })
+          (out/"receipts"/"extra_qstk_receipts.json").write_text(json.dumps(receipts,indent=2),encoding="utf-8")
+          with (out/"receipts"/"extra_qstk_receipts.csv").open("w",newline="",encoding="utf-8") as f:
+              w=csv.DictWriter(f,fieldnames=list(receipts[0])); w.writeheader(); w.writerows(receipts)
+          print(json.dumps(receipts,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pit-qstk-v24-extra
+          path: out/
+          retention-days: 7

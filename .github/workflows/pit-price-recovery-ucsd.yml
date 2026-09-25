@@ -44,8 +44,8 @@ jobs:
             if [ -n "$f" ]; then
               cp "$f" "selected/${t}.csv"
               rows=$(awk 'END{print NR-1}' "$f")
-              first=$(tail -n +2 "$f" | head -n 1 | cut -d, -f1 | tr -d '\r')
-              last=$(tail -n 1 "$f" | cut -d, -f1 | tr -d '\r')
+              first=$(awk -F, 'NR==2 {gsub("\\r","",$1); print $1; exit}' "$f")
+              last=$(awk -F, 'END {gsub("\\r","",$1); print $1}' "$f")
               h=$(sha256sum "$f" | awk '{print $1}')
               printf '%s,FOUND,%s,%s,%s,%s,%s\n' "$t" "$f" "$rows" "$first" "$last" "$h" >> selected/manifest.csv
             else

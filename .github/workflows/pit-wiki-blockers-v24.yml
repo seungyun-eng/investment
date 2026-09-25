@@ -1,0 +1,81 @@
+name: PIT V24 WIKI Prices blocker extraction
+
+on:
+  push:
+    branches: [chatgpt-pit-qstk-v35]
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download Kaggle WIKI archive and extract blocker symbols
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out/by_ticker out/receipts
+          URL="https://www.kaggle.com/api/v1/datasets/download/marketneutral/quandl-wiki-prices-us-equites"
+          curl -L --retry 2 --connect-timeout 20 -o /tmp/wiki.zip "$URL"
+          sha256sum /tmp/wiki.zip > out/receipts/wiki_archive_sha256.txt
+          stat -c "%s" /tmp/wiki.zip > out/receipts/wiki_archive_bytes.txt
+          python - <<'PY'
+          import csv, hashlib, io, json, pathlib, zipfile
+          candidates = sorted(set("""
+          NSM RSH RSHCQ MEE PETM CDAY DAY CSRA NOVL AYE ENDP MDP EK EKDKQ ODP GMCR PTV EVHC CBE DWDP MIL STR XTO MMI WCG ANR ANRZQ BJS SBNY RX CPGX CVG DYN BXLT JOYG JOY SGP CTX RE EG CMCSK CMCSA ESV VAL ACAS JNY DLPH APTV EP CPWR GENZ KG
+          """.split()))
+          wanted=set(candidates)
+          out=pathlib.Path("out/by_ticker")
+          handles={}
+          writers={}
+          counts={t:0 for t in candidates}
+          first={t:None for t in candidates}
+          last={t:None for t in candidates}
+          hashes={t:hashlib.sha256() for t in candidates}
+          z=zipfile.ZipFile("/tmp/wiki.zip")
+          name=z.namelist()[0]
+          with z.open(name) as raw:
+              text=io.TextIOWrapper(raw,encoding="utf-8",newline="")
+              reader=csv.DictReader(text)
+              fields=reader.fieldnames
+              for row in reader:
+                  t=(row.get("ticker") or "").strip()
+                  if t not in wanted:
+                      continue
+                  if t not in writers:
+                      f=(out/f"{t}.csv").open("w",newline="",encoding="utf-8")
+                      handles[t]=f
+                      w=csv.DictWriter(f,fieldnames=fields)
+                      w.writeheader()
+                      writers[t]=w
+                  writers[t].writerow(row)
+                  counts[t]+=1
+                  d=(row.get("date") or "").strip()
+                  if d:
+                      first[t]=d if first[t] is None or d<first[t] else first[t]
+                      last[t]=d if last[t] is None or d>last[t] else last[t]
+          for f in handles.values(): f.close()
+          rec=[]
+          for t in candidates:
+              fp=out/f"{t}.csv"
+              rec.append({
+                  "ticker":t,
+                  "rows":counts[t],
+                  "first_date":first[t],
+                  "last_date":last[t],
+                  "status":"FOUND" if counts[t] else "NOT_FOUND",
+                  "file_sha256":hashlib.sha256(fp.read_bytes()).hexdigest() if fp.exists() else None
+              })
+          pathlib.Path("out/receipts/wiki_blocker_receipts.json").write_text(json.dumps(rec,indent=2),encoding="utf-8")
+          with open("out/receipts/wiki_blocker_receipts.csv","w",newline="",encoding="utf-8") as f:
+              w=csv.DictWriter(f,fieldnames=list(rec[0])); w.writeheader(); w.writerows(rec)
+          print("FOUND",sum(r["rows"]>0 for r in rec),"of",len(rec),"candidate symbols")
+          print("ROWS",sum(r["rows"] for r in rec))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pit-v24-wiki-blockers
+          path: out/
+          retention-days: 7

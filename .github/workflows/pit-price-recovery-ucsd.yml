@@ -1,0 +1,86 @@
+name: PIT archival price recovery
+
+on:
+  push:
+    branches:
+      - pit-price-recovery-ucsd
+    paths:
+      - '.github/workflows/pit-price-recovery-ucsd.yml'
+      - 'research/pit_price_recovery_trigger.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download UCSD public historical stock archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work extracted selected
+          curl -fL --retry 4 --retry-delay 3 \
+            'https://mas-dse-open.s3.amazonaws.com/Stocks/spdata_csv.tgz' \
+            -o work/spdata_csv.tgz
+          sha256sum work/spdata_csv.tgz | tee work/spdata_csv.tgz.sha256
+          tar -xzf work/spdata_csv.tgz -C extracted
+          find extracted -type f | sort > work/all_files.txt
+          echo "Archive files: $(wc -l < work/all_files.txt)"
+
+      - name: Extract PIT blocker tickers only
+        shell: bash
+        run: |
+          set -euo pipefail
+          blockers='NSM RSH MEE PETM CDAY CSRA NOVL AYE ENDP MDP EK ODP GMCR PTV EVHC CBE DWDP MIL STR XTO MMI WCG ANR BJS SBNY RX CPGX CVG DYN BXLT JOYG SGP CTX RE CMCSK ESV ACAS JNY DLPH EP CPWR GENZ KG'
+          printf 'ticker,status,source_file,rows,first_date,last_date,sha256\n' > selected/manifest.csv
+          for t in $blockers; do
+            f=$(find extracted -type f -iname "${t}.csv" | head -n 1 || true)
+            if [ -n "$f" ]; then
+              cp "$f" "selected/${t}.csv"
+              rows=$(awk 'END{print NR-1}' "$f")
+              first=$(tail -n +2 "$f" | head -n 1 | cut -d, -f1 | tr -d '\r')
+              last=$(tail -n 1 "$f" | cut -d, -f1 | tr -d '\r')
+              h=$(sha256sum "$f" | awk '{print $1}')
+              printf '%s,FOUND,%s,%s,%s,%s,%s\n' "$t" "$f" "$rows" "$first" "$last" "$h" >> selected/manifest.csv
+            else
+              printf '%s,NOT_FOUND,,0,,,\n' "$t" >> selected/manifest.csv
+            fi
+          done
+          cat selected/manifest.csv
+
+      - name: Validate CSV schemas
+        shell: python
+        run: |
+          import csv, glob, json, os
+          out = []
+          for p in sorted(glob.glob("selected/*.csv")):
+              if p.endswith("manifest.csv"):
+                  continue
+              with open(p, newline="", encoding="utf-8-sig", errors="replace") as f:
+                  r = csv.reader(f)
+                  header = next(r, [])
+              lower = [x.strip().lower() for x in header]
+              required = {"date","open","high","low","close","volume"}
+              out.append({
+                  "file": os.path.basename(p),
+                  "header": header,
+                  "required_ohlcv_present": required.issubset(set(lower)),
+              })
+          with open("selected/schema_validation.json","w") as f:
+              json.dump(out, f, indent=2)
+          bad = [x for x in out if not x["required_ohlcv_present"]]
+          if bad:
+              print("Schema warnings:", bad)
+          print(json.dumps(out, indent=2))
+
+      - name: Upload recovered blocker prices
+        uses: actions/upload-artifact@v4
+        with:
+          name: pit-ucsd-blocker-prices
+          path: selected/
+          if-no-files-found: error
+          retention-days: 7

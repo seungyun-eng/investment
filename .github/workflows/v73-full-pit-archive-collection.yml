@@ -1,0 +1,44 @@
+name: V73 full PIT archival acquisition
+on:
+  push:
+    branches: [chatgpt-v73-raw-recovery-20260930]
+    paths: [.github/workflows/v73-full-pit-archive-collection.yml]
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: v73-full-pit-archive-acquisition
+  cancel-in-progress: false
+jobs:
+  acquire:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - name: Read isolated research branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install bounded transport and Parquet readers
+        run: |
+          python3 -m pip install --disable-pip-version-check pyarrow==21.0.0
+          npm install --no-audit --no-fund --ignore-scripts --no-package-lock @actions/artifact@2.3.2
+          python3 - <<'PY'
+          import pathlib,hashlib,json,shutil
+          p=pathlib.Path('research/v73_archive_scope');m=json.loads((p/'scope_manifest.json').read_text());s=set((p/'ciks.txt').read_text().split());s.difference_update(m['transport_corrections']['remove']);s.update(m['transport_corrections']['add']);b=('\n'.join(sorted(s))+'\n').encode()
+          assert len(s)==809 and hashlib.sha256(b).hexdigest()==m['canonical_sha256'], 'scope differs from supplied PIT snapshot'
+          assert shutil.disk_usage('.').free>5*1024**3, 'local work space insufficient'
+          print('Verified scope:809 issuers; no private snapshot or local paths published.')
+          PY
+      - name: Collect and preserve every matching archived primary document
+        uses: ./.github/actions/v73-archive-driver
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONUNBUFFERED: '1'
+      - name: Preserve checkpoint and request receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-full-pit-checkpoint-${{ github.run_id }}
+          path: archive_work/metadata/
+          retention-days: 1
+          compression-level: 9

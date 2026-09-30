@@ -4,7 +4,7 @@ on:
     branches: [chatgpt-v73-raw-recovery-20260930]
     paths: [.github/workflows/v73-official-sec-bulk.yml]
 permissions:
-  contents: read
+  contents: write
   actions: write
 concurrency:
   group: v73-sec-direct-access
@@ -12,14 +12,18 @@ concurrency:
 jobs:
   acquire:
     runs-on: ubuntu-24.04
-    timeout-minutes: 240
+    timeout-minutes: 330
     steps:
       - name: Read isolated collector
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - name: Prepare official-source transport
+      - name: Restore verified resume state and prepare transport
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
+          python3 -m py_compile research/v73_archive_scope/bootstrap_verified_resume.py
+          python3 research/v73_archive_scope/bootstrap_verified_resume.py
           npm install --no-audit --no-fund --ignore-scripts --no-package-lock @actions/artifact@2.3.2
           python3 - <<'PY'
           from pathlib import Path

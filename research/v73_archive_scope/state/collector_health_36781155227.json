@@ -1,1 +1,1 @@
-{"run_id":36781155227,"phase":"collecting","updated_at_utc":"2026-09-30T23:50:36.833Z","source_updated_at_utc":"2026-09-30T23:50:35.841522+00:00","counts":{"http_requests":285,"network_bytes":52261005,"wire_bytes":6806849},"source_index_issuers_completed":52,"pending_artifact_ids":[]}
+{"run_id":36781155227,"phase":"collecting","updated_at_utc":"2026-09-30T23:51:36.841Z","source_updated_at_utc":"2026-09-30T23:51:36.779171+00:00","counts":{"http_requests":585,"network_bytes":88179425,"wire_bytes":11936291},"source_index_issuers_completed":125,"pending_artifact_ids":[]}

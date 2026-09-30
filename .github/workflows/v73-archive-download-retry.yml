@@ -1,0 +1,43 @@
+name: V73 full PIT download retry
+on:
+  push:
+    branches: [chatgpt-v73-raw-recovery-20260930]
+    paths: [.github/workflows/v73-archive-download-retry.yml]
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: v73-full-pit-archive-acquisition
+  cancel-in-progress: false
+jobs:
+  acquire:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - name: Read isolated research source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Prepare reader and validate collector
+        run: |
+          python3 -m pip install --disable-pip-version-check pyarrow==21.0.0
+          npm install --no-audit --no-fund --ignore-scripts --no-package-lock @actions/artifact@2.3.2
+          python3 -m py_compile research/v73_archive_scope/retry_collector.py
+          node --check .github/actions/v73-retry-driver/driver.js
+          python3 - <<'PY'
+          import shutil
+          assert shutil.disk_usage('.').free > 5*1024**3, 'insufficient temporary disk'
+          PY
+      - name: Acquire matching archived primary content
+        uses: ./.github/actions/v73-retry-driver
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONUNBUFFERED: '1'
+      - name: Preserve actual checkpoint and source receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-retry-checkpoint-${{ github.run_id }}
+          path: retry_work/metadata/
+          retention-days: 1
+          compression-level: 9

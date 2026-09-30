@@ -1,0 +1,58 @@
+name: V73 guarded stalled-run handoff
+on:
+  push:
+    branches: [chatgpt-v73-raw-recovery-20260930]
+    paths: [.github/workflows/v73-stalled-handoff-20260930.yml]
+permissions:
+  actions: write
+  contents: read
+concurrency:
+  group: v73-stalled-run-handoff
+  cancel-in-progress: false
+jobs:
+  handoff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Verify exact stalled research run and request normal cancellation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import datetime,json,os,pathlib,time,urllib.request,urllib.error
+          ROOT=pathlib.Path('handoff_receipt');ROOT.mkdir()
+          REPO=os.environ['GITHUB_REPOSITORY'];RID=36751235759
+          assert REPO=='seungyun-eng/investment'
+          def api(path,method='GET'):
+              req=urllib.request.Request('https://api.github.com/repos/'+REPO+path,method=method,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','User-Agent':'V73-guarded-recovery'})
+              with urllib.request.urlopen(req,timeout=30) as r:
+                  raw=r.read();return json.loads(raw) if raw else {'status':r.status}
+          run=api('/actions/runs/'+str(RID))
+          assert run['head_branch']=='chatgpt-v73-raw-recovery-20260930'
+          assert run['head_sha']=='e0b8a8378338e58f90213c701323b24eedb488eb'
+          assert run['path']=='.github/workflows/v73-official-sec-bulk.yml'
+          artifacts=api('/actions/runs/'+str(RID)+'/artifacts?per_page=100')
+          (ROOT/'before.json').write_text(json.dumps({'run_id':RID,'status':run['status'],'artifact_count':artifacts['total_count'],'time_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()},indent=2))
+          if run['status']=='in_progress':
+              jobs=api('/actions/runs/'+str(RID)+'/jobs?per_page=100')['jobs']
+              begun=datetime.datetime.fromisoformat(jobs[0]['started_at'].replace('Z','+00:00'))
+              assert (datetime.datetime.now(datetime.timezone.utc)-begun).total_seconds()>3600
+              assert artifacts['total_count']==0,'New output exists; preserve rather than interrupt'
+              # Normal cancellation, not force-cancel; the existing always() checkpoint step is retained.
+              result=api('/actions/runs/'+str(RID)+'/cancel','POST')
+              print('NORMAL_CANCELLATION_REQUESTED',result)
+              for _ in range(60):
+                  time.sleep(5);run=api('/actions/runs/'+str(RID))
+                  if run['status']=='completed':break
+          artifacts=api('/actions/runs/'+str(RID)+'/artifacts?per_page=100')
+          out={'run_id':RID,'status':run['status'],'conclusion':run['conclusion'],'artifacts':artifacts['artifacts'],'original_artifacts_deleted':False,'durable_resume_index_modified':False}
+          (ROOT/'after.json').write_text(json.dumps(out,indent=2));print(json.dumps(out))
+          PY
+      - name: Preserve handoff receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-stalled-handoff-${{ github.run_id }}
+          path: handoff_receipt/
+          retention-days: 1
+          compression-level: 9

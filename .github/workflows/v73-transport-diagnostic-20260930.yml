@@ -1,0 +1,72 @@
+name: V73 bounded transport diagnosis
+on:
+  push:
+    branches: [chatgpt-v73-raw-recovery-20260930]
+    paths: [.github/workflows/v73-transport-diagnostic-20260930.yml]
+permissions:
+  contents: read
+concurrency:
+  group: v73-transport-diagnosis
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Compare bounded transports without changing the live collector
+        run: |
+          mkdir -p transport_diagnosis
+          cat > transport_diagnosis/probe.py <<'PY'
+          import datetime,gzip,hashlib,http.client,io,json,pathlib,ssl,sys,time,urllib.request,urllib.error,urllib.parse
+          ROOT=pathlib.Path('transport_diagnosis')
+          URL='https://data.sec.gov/submissions/CIK0000320193.json'
+          UA='Seungyun Lee V73 academic research seungyun@berkeley.edu'
+          route=urllib.request.getproxies()
+          summary={'time_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'proxy_schemes_present':sorted(k for k in route if k in ('http','https','all')),'proxy_values_redacted':True,'network_access_restrictions_changed':False,'tests':[]}
+          def record(x):
+              summary['tests'].append(x)
+              (ROOT/'diagnosis.json').write_text(json.dumps(summary,indent=2))
+              print(json.dumps(x),flush=True)
+          # Do not bypass the runner's configured proxy for a diagnostic.
+          # When one is configured, the old direct-only connection has no route support.
+          if route.get('https') and not urllib.request.proxy_bypass('data.sec.gov'):
+              record({'transport':'old_http_client','status':'INCOMPATIBLE_WITH_CONFIGURED_PROXY','reason':'fast_transport.connection constructs HTTPSConnection(host) without tunnel/proxy handling; direct probe deliberately not sent'})
+          else:
+              begun=time.monotonic()
+              try:
+                  c=http.client.HTTPSConnection('data.sec.gov',timeout=8)
+                  c.request('GET','/submissions/CIK0000320193.json',headers={'User-Agent':UA,'Accept-Encoding':'gzip'})
+                  r=c.getresponse();status=r.status;b=r.read(4*1024**2+1);c.close()
+                  record({'transport':'old_http_client','http_status':status,'bytes':len(b),'elapsed_seconds':time.monotonic()-begun})
+                  if status in (401,403,429):raise SystemExit(0)
+              except Exception as e:
+                  record({'transport':'old_http_client','error_type':type(e).__name__,'elapsed_seconds':time.monotonic()-begun})
+          time.sleep(1)
+          class StopRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*a,**kw):return None
+          begun=time.monotonic();opener=urllib.request.build_opener(StopRedirect)
+          try:
+              with opener.open(urllib.request.Request(URL,headers={'User-Agent':UA,'Accept-Encoding':'gzip'}),timeout=12) as r:
+                  w=r.read(4*1024**2+1);enc=r.headers.get('Content-Encoding','identity');status=r.status
+              if len(w)>4*1024**2:raise ValueError('BOUNDED_RESPONSE_EXCEEDED')
+              b=gzip.GzipFile(fileobj=io.BytesIO(w)).read(8*1024**2+1) if enc=='gzip' else w
+              obj=json.loads(b);assert str(obj['cik']).zfill(10)=='0000320193'
+              record({'transport':'urllib_environment_route','http_status':status,'wire_bytes':len(w),'decoded_bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'elapsed_seconds':time.monotonic()-begun,'issuer_identity_verified':True})
+          except urllib.error.HTTPError as e:
+              record({'transport':'urllib_environment_route','http_status':e.code,'elapsed_seconds':time.monotonic()-begun,'access_stopped':e.code in (401,403,429)})
+          except Exception as e:
+              record({'transport':'urllib_environment_route','error_type':type(e).__name__,'elapsed_seconds':time.monotonic()-begun})
+          print('V73_DIAGNOSIS '+json.dumps(summary),flush=True)
+          PY
+          python3 -u transport_diagnosis/probe.py
+      - name: Preserve bounded diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-transport-diagnosis-${{ github.run_id }}
+          path: transport_diagnosis/
+          retention-days: 1
+          compression-level: 9

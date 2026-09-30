@@ -1,0 +1,49 @@
+name: V73 SEC availability recheck after cooldown
+on:
+  push:
+    branches: [chatgpt-v73-raw-recovery-20260930]
+    paths: [.github/workflows/v73-sec-cooldown-recheck.yml]
+permissions:
+  contents: read
+concurrency:
+  group: v73-sec-direct-access
+  cancel-in-progress: false
+jobs:
+  recheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Recheck declared access once; never rotate proxy or bypass denial
+        run: |
+          python3 - <<'PY'
+          import pathlib,datetime,urllib.request,urllib.error,json,hashlib,time
+          root=pathlib.Path('sec_recheck');root.mkdir()
+          prior=datetime.datetime.fromisoformat('2026-09-30T06:42:47+00:00')
+          now=datetime.datetime.now(datetime.timezone.utc)
+          assert (now-prior).total_seconds()>600
+          rows=[];stop=False
+          items=[('0001564590-20-034944','https://www.sec.gov/Archives/edgar/data/789019/000156459020034944/msft-10k_20200630.htm','0e1b83d390e41c0a4dd79630ccec3c9f2bf04309cd94a7990ac4a24fc4a6eba9'),('0001564590-19-027952','https://www.sec.gov/Archives/edgar/data/789019/000156459019027952/msft-10k_20190630.htm','ff38993df60fd66368e47a47e8f8d51586c9197e3d6c9dcab5803a00cc4a5218'),('0001564590-21-039151','https://www.sec.gov/Archives/edgar/data/789019/000156459021039151/msft-10k_20210630.htm','0cdddd9409d55b933bb5b9d3f8cc3fbb3c7f3390a531406aea2b1a0ba4bbf999'),('0001564590-22-026876','https://www.sec.gov/Archives/edgar/data/789019/000156459022026876/msft-10k_20220630.htm','d8c69513cd820ecdfa3b22decf2672591ced88996188c218d3ffa1439b6b528f')]
+          for acc,url,expected in items:
+            row=dict(accession=acc,url=url,expected_sha256=expected,retrieved_at_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),status='NOT_REQUESTED')
+            if stop:row['status']='SKIPPED_ACCESS_STOP';rows.append(row);continue
+            time.sleep(2)
+            try:
+              req=urllib.request.Request(url,headers={'User-Agent':'Seungyun Lee V73 academic research seungyun@berkeley.edu','Accept-Encoding':'identity'})
+              with urllib.request.urlopen(req,timeout=30) as r:body=r.read(32*1024*1024+1);row['http_status']=r.status
+              assert len(body)<=32*1024*1024
+              h=hashlib.sha256(body).hexdigest();(root/(h+'.html')).write_bytes(body)
+              row.update(status='RETRIEVED',sha256=h,bytes=len(body),matches_expected=h==expected)
+            except urllib.error.HTTPError as e:
+              row.update(status='HTTP_ERROR',http_status=e.code,error=str(e));stop=e.code in (401,403,429)
+            except Exception as e:row.update(status='ERROR',error=repr(e));stop=True
+            rows.append(row);print(json.dumps(row),flush=True)
+          (root/'receipt.json').write_text(json.dumps(dict(previous_denial_utc=prior.isoformat(),recheck_utc=now.isoformat(),elapsed_cooldown_seconds=(now-prior).total_seconds(),access_stopped=stop,records=rows),indent=2))
+          PY
+      - name: Keep actual response receipt and any successful original bytes
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-sec-recheck-${{ github.run_id }}
+          path: sec_recheck/
+          retention-days: 1
+          compression-level: 9

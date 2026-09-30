@@ -1,0 +1,49 @@
+name: V73 public clock and original indexing
+on:
+  push:
+    branches: [chatgpt-v73-raw-recovery-20260930]
+    paths: [.github/workflows/v73-public-clock-recovery.yml]
+permissions:
+  contents: read
+concurrency:
+  group: v73-primary-document-recovery
+  cancel-in-progress: false
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - name: Recover public metadata without resetting SEC access stop
+        run: |
+          mkdir -p out/raw
+          python3 - <<'PY'
+          import datetime, hashlib, json, pathlib, time, urllib.request, urllib.error
+          root=pathlib.Path('out'); rows=[]; stopped=False
+          ids=[137,172,226,234,315,326,402,407,538,551,650,658,708,709,768,772,849,857,925,929,979,980,1032,1035,1136,1139,1213,1237,1301,1305,1401,1402,1498,1502,1570,1580,1628,1634,1721,1729,1840,1846,1928,1937,3006,3010,4102,4104,4198,4201,4337,4339,4427,4432,4518,4523,4627,4631,4720,4724,4806,4813,4904,4908,5027,5028,5103,5104,5176,5179,5276,5277,5383,5387,5474,5479,5542,5548,5632,5637,5743,5745,5832,5846,5914,5915,7992,7994,8077,8079,8136,8137,9188,9195,11265,11266]
+          for filing in ids:
+            url=f'https://securitiesfilings.fdicconnect.fdic.gov/api/instflng/{filing}'
+            row=dict(filing_id=filing,url=url,retrieved_at_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),status='PENDING')
+            if stopped: row['status']='SKIPPED_ACCESS_STOP'; rows.append(row); continue
+            time.sleep(1)
+            try:
+              request=urllib.request.Request(url,headers={'User-Agent':'V73Research/1.0 (https://github.com/seungyun-eng/investment)','Accept':'application/json','Accept-Encoding':'identity'})
+              with urllib.request.urlopen(request,timeout=45) as response:
+                data=response.read(4*1024*1024+1); row.update(http_status=response.status,response_url=response.geturl(),content_type=response.headers.get('Content-Type'))
+              if len(data)>4*1024*1024: raise ValueError('metadata response too large')
+              obj=json.loads(data); digest=hashlib.sha256(data).hexdigest(); dest=root/'raw'/(digest+'.json'); dest.write_bytes(data)
+              row.update(status='RETRIEVED',sha256=digest,bytes=len(data),file=str(dest.relative_to(root)))
+            except urllib.error.HTTPError as error:
+              row.update(status='HTTP_ERROR',http_status=error.code,error=str(error)); stopped=error.code in (401,403,429)
+            except Exception as error: row.update(status='ERROR',error=type(error).__name__+': '+str(error))
+            rows.append(row); (root/'receipts.json').write_text(json.dumps(rows,indent=2)); print(json.dumps(row),flush=True)
+          (root/'receipts.json').write_text(json.dumps(rows,indent=2))
+          (root/'summary.json').write_text(json.dumps(dict(target_records=len(ids),retrieved_records=sum(x['status']=='RETRIEVED' for x in rows),access_stop=stopped,sec_access_stop_preserved=True,feature_approvals=0,full_pit_ready=False,backtest=False),indent=2))
+          PY
+      - name: Preserve raw metadata and receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-public-clock-${{ github.run_id }}
+          path: out/
+          retention-days: 1
+          compression-level: 9

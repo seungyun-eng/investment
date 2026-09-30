@@ -1,0 +1,41 @@
+name: V73 inherited artifact repair
+on:
+  push:
+    branches: [chatgpt-v73-raw-recovery-20260930]
+    paths: [.github/workflows/v73-inherited-artifact-repair.yml]
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: v73-sec-direct-access
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Reclaim only independently verified completed-run copies
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 -u research/v73_archive_scope/artifact_handoff.py
+          python3 - <<'PY'
+          import json,pathlib,sys
+          sys.path.insert(0,'research/v73_archive_scope')
+          from artifact_handoff import Client
+          items=Client().inventory()
+          out=[{k:a.get(k) for k in ('id','name','size_in_bytes','digest','expired','workflow_run')} for a in items]
+          p=pathlib.Path('retry_work/metadata/artifact_inventory.json');p.write_text(json.dumps(out,indent=2))
+          print('V73_REMAINING_INVENTORY '+json.dumps(out))
+          PY
+      - name: Preserve repair evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-inherited-repair-${{ github.run_id }}
+          path: retry_work/metadata/
+          retention-days: 1
+          compression-level: 9

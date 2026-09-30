@@ -18,14 +18,28 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+      - name: Reconcile verified previous-run artifacts before acquisition
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 -m py_compile research/v73_archive_scope/artifact_handoff.py
+          python3 -u - <<'PY'
+          import sys
+          sys.path.insert(0,'research/v73_archive_scope')
+          import artifact_handoff as h
+          # Largest explicitly preserved legacy ZIP is 127 MB; live artifact ceiling remains 400 MiB.
+          h.MAX_ZIP=160*1024**2
+          h.main()
+          PY
       - name: Restore verified resume state and prepare transport
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           python3 -m py_compile research/v73_archive_scope/bootstrap_verified_resume.py
           python3 research/v73_archive_scope/bootstrap_verified_resume.py
-          python3 -m py_compile research/v73_archive_scope/fast_transport.py research/v73_archive_scope/apply_fast_transport.py
+          python3 -m py_compile research/v73_archive_scope/fast_transport.py research/v73_archive_scope/apply_fast_transport.py research/v73_archive_scope/apply_handoff_monitor.py
           python3 research/v73_archive_scope/apply_fast_transport.py
+          python3 research/v73_archive_scope/apply_handoff_monitor.py
           npm install --no-audit --no-fund --ignore-scripts --no-package-lock @actions/artifact@2.3.2
           python3 - <<'PY'
           from pathlib import Path

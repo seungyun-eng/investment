@@ -1,0 +1,63 @@
+name: V73 archived HTML column validation
+on:
+  push:
+    branches: [chatgpt-v73-raw-recovery-20260930]
+    paths: [.github/workflows/v73-public-archive-column-inspection.yml]
+permissions:
+  contents: read
+concurrency:
+  group: v73-public-archive-inspection
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Install file reader
+        run: python3 -m pip install --disable-pip-version-check pyarrow==21.0.0
+      - name: Download and validate archive columns, not cleaned text
+        run: |
+          mkdir -p out/raw out/samples
+          python3 - <<'PY'
+          import datetime,gzip,hashlib,json,pathlib,time,urllib.request,urllib.error,urllib.parse
+          import pyarrow.parquet as pq
+          root=pathlib.Path('out');receipts=[];summaries=[];ua='V73Research/1.0 (research contact: seungyun@berkeley.edu)'
+          try:
+            for form in ['10-K','10-Q']:
+              time.sleep(1);repo='TeraflopAI/'+form+'-text';u='https://huggingface.co/api/datasets/'+repo
+              with urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':ua}),timeout=60) as r:mb=r.read(12*1024*1024)
+              m=json.loads(mb);(root/(form+'_repository.json')).write_bytes(mb)
+              if m.get('gated') or m.get('private'):raise ValueError('nonpublic dataset is not permitted')
+              files=[x['rfilename'] for x in m.get('siblings',[]) if x['rfilename'].endswith('.parquet')];name=files[0]
+              u='https://huggingface.co/datasets/'+repo+'/resolve/'+m['sha']+'/'+urllib.parse.quote(name,safe='/');p=pathlib.Path('partition.parquet');h=hashlib.sha256();size=0
+              with urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':ua,'Accept-Encoding':'identity'}),timeout=120) as r,p.open('wb') as out:
+                while True:
+                  b=r.read(1024*1024)
+                  if not b:break
+                  size+=len(b)
+                  if size>1536*1024*1024:raise ValueError('partition exceeds 1.5 GiB inspection ceiling')
+                  h.update(b);out.write(b)
+              receipts.append({'url':u,'repository_revision':m['sha'],'source_file':name,'bytes':size,'sha256':h.hexdigest(),'status':'RETRIEVED','time':datetime.datetime.now(datetime.timezone.utc).isoformat()})
+              pf=pq.ParquetFile(p);cols=pf.schema_arrow.names;meta_cols=[x for x in cols if x not in ('content','text')]
+              index=pf.read(columns=meta_cols);pq.write_table(index,root/(form+'_partition_index.parquet'),compression='zstd');(root/(form+'_schema.txt')).write_text(str(pf.schema_arrow))
+              data=[]
+              for batch in pf.iter_batches(batch_size=8):
+                for row in batch.to_pylist():
+                  k=f'{form}_{len(data):03}';content=row.pop('content',None);text=row.pop('text',None)
+                  if isinstance(content,str):
+                    b=content.encode('utf-8');(root/'samples'/(k+'.content.gz')).write_bytes(gzip.compress(b,mtime=0));row.update(content_file='samples/'+k+'.content.gz',content_sha256=hashlib.sha256(b).hexdigest(),content_length=len(b))
+                  row['clean_text_length']=len(text) if isinstance(text,str) else None;row['original_encoding_or_byte_equivalence_unverified']=True;data.append(row)
+                break
+              (root/(form+'_sample_metadata.json')).write_text(json.dumps(data,indent=2));summaries.append({'repo':repo,'revision':m['sha'],'files':len(files),'partition':name,'bytes':size,'rows':pf.metadata.num_rows,'row_groups':pf.metadata.num_row_groups,'columns':cols});p.unlink();print(json.dumps(summaries[-1]),flush=True)
+          except Exception as e:
+            (root/'error.txt').write_text(type(e).__name__+': '+str(e));receipts.append({'status':'STOPPED_ERROR','error':type(e).__name__+': '+str(e),'http_status':getattr(e,'code',None)})
+          (root/'receipts.json').write_text(json.dumps(receipts,indent=2));(root/'summary.json').write_text(json.dumps(summaries,indent=2))
+          PY
+      - name: Save inspection and small raw examples
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-archive-columns-${{ github.run_id }}
+          path: out/
+          retention-days: 1
+          compression-level: 9

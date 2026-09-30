@@ -1,0 +1,90 @@
+name: V73 issuer original expansion
+on:
+  push:
+    branches: [chatgpt-v73-raw-recovery-20260930]
+    paths: [.github/workflows/v73-issuer-expansion.yml]
+permissions:
+  contents: read
+concurrency:
+  group: v73-primary-document-recovery
+  cancel-in-progress: false
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Download official issuer originals only
+        shell: bash
+        run: |
+          mkdir -p out/raw
+          python3 - <<'PY'
+          import datetime,hashlib,json,pathlib,re,time,urllib.request,urllib.error,urllib.parse
+          from html.parser import HTMLParser
+          class Links(HTMLParser):
+            def __init__(self): super().__init__(); self.href=None; self.label=''; self.links=[]
+            def handle_starttag(self,tag,attrs):
+              if tag=='a': self.href=dict(attrs).get('href');self.label=''
+            def handle_data(self,data):
+              if self.href:self.label+=data+' '
+            def handle_endtag(self,tag):
+              if tag=='a' and self.href:self.links.append((self.href,self.label));self.href=None
+          root=pathlib.Path('out');rows=[];seen=set();blocked=set()
+          def fetch(url,year,role):
+            url=urllib.parse.urldefrag(url)[0]
+            if url in seen:return None
+            seen.add(url);host=urllib.parse.urlparse(url).hostname
+            row={'url':url,'issuer':'MICROSOFT','report_year':year,'role':role,'retrieved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'approved_feature':False}
+            if host in blocked:row['status']='SKIPPED_HOST_ACCESS_STOP';rows.append(row);return None
+            time.sleep(1.0)
+            try:
+              req=urllib.request.Request(url,headers={'User-Agent':'V73Research/1.0 (https://github.com/seungyun-eng/investment)','Accept-Encoding':'identity'})
+              with urllib.request.urlopen(req,timeout=45) as r:
+                data=r.read(32*1024*1024+1);row['http_status']=r.status;row['response_url']=r.geturl();row['content_type']=r.headers.get('Content-Type')
+              if len(data)>32*1024*1024:raise ValueError('per-document bound exceeded')
+              if b'<html' not in data[:10000].lower() and b'<!doctype' not in data[:10000].lower():raise ValueError('not HTML')
+              digest=hashlib.sha256(data).hexdigest();dest=root/'raw'/(digest+'.html');dest.write_bytes(data)
+              row.update(status='RETRIEVED',bytes=len(data),sha256=digest,file=str(dest.relative_to(root)))
+            except urllib.error.HTTPError as e:
+              row.update(status='HTTP_ERROR',http_status=e.code,error=str(e))
+              if e.code in (403,429):blocked.add(host)
+              data=None
+            except Exception as e:row.update(status='ERROR',error=str(e));data=None
+            rows.append(row);(root/'download_receipts.json').write_text(json.dumps(rows,indent=2));print(json.dumps(row),flush=True);return data
+          # Prior report years are required to validate the actual original comparator.
+          for year in list(range(2008,2019))+[2023,2024,2025,2026]:
+            url='https://www.microsoft.com/investor/reports/ar'+str(year)[-2:]+'/index.html'
+            data=fetch(url,year,'official_annual_report')
+            if data is None:continue
+            lower=data.lower()
+            if b'balance, beginning of year' in lower and b'repurchased' in lower:continue
+            p=Links();p.feed(data.decode('utf-8',errors='replace'));children=[]
+            for href,label in p.links:
+              child=urllib.parse.urldefrag(urllib.parse.urljoin(url,href))[0]
+              if urllib.parse.urlparse(child).hostname!='www.microsoft.com':continue
+              if ('/ar'+str(year)[-2:]+'/') not in child:continue
+              if not re.search(r'stockholders|financial statements|notes|balance sheet',label,re.I):continue
+              if child not in seen and child not in children:children.append(child)
+            for child in children[:8]:fetch(child,year,'linked_financial_statement_or_note')
+          summary={'source_records':len(rows),'retrieved_documents':sum(r['status']=='RETRIEVED' for r in rows),'unique_original_bytes_files':len(list((root/'raw').glob('*.html'))),'retrieved_bytes':sum(p.stat().st_size for p in (root/'raw').glob('*.html')),'feature_approvals':0,'sec_access_stop_preserved':True,'backtest':False}
+          (root/'summary.json').write_text(json.dumps(summary,indent=2));print('SUMMARY '+json.dumps(summary))
+          PY
+      - name: Preserve original bytes
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-issuer-originals-${{ github.run_id }}
+          path: out/
+          retention-days: 1
+          compression-level: 9
+      - name: Prepare standard Parquet dependency for isolated offline processing
+        shell: bash
+        run: |
+          python3 -m pip download --no-deps --only-binary=:all: --implementation cp --python-version 313 --abi cp313 --platform manylinux_2_28_x86_64 pyarrow==21.0.0 -d wheels
+          sha256sum wheels/* > wheels/SHA256SUMS.txt
+      - name: Transfer Parquet wheel
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-offline-parquet-${{ github.run_id }}
+          path: wheels/
+          retention-days: 1
+          compression-level: 0

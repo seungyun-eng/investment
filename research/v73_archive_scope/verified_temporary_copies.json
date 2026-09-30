@@ -2,5 +2,6 @@
   {"artifact_id":11081218092,"run_id":36680852199,"name":"v73-fdic-originals-36680852199","zip_sha256":"e36baa3006aa620ca5131f1b59d39bdf2a822522c2cbb58c900c1ed0d215df85","durable_external_copy_verified":true},
   {"artifact_id":11081662157,"run_id":36679937739,"name":"v73-offline-parquet-36679937739","zip_sha256":"4d3b81483dfb329ed8c32c2f833d3195510b55e865ee815f4429de2a7df9923a","durable_external_copy_verified":true},
   {"artifact_id":11084724952,"run_id":36687656267,"name":"v73-pit-raw-36687656267-0008","zip_sha256":"d2901f8500bf1f91421ad9887fd17dfb3562113ccb6c8b7055baeb6deddf79df","durable_external_copy_verified":true},
-  {"artifact_id":11126131235,"run_id":36751235759,"name":"v73-official-checkpoint-36751235759","zip_sha256":"85c50a464f7538cf8e2aed3615431c3aca6bf5a4b80d479d3fbb573453e05c97","durable_external_copy_verified":true}
+  {"artifact_id":11126131235,"run_id":36751235759,"name":"v73-official-checkpoint-36751235759","zip_sha256":"85c50a464f7538cf8e2aed3615431c3aca6bf5a4b80d479d3fbb573453e05c97","durable_external_copy_verified":true},
+  {"artifact_id":11127088870,"run_id":36780398454,"name":"v73-pyarrow21-cp313-36780398454","zip_sha256":"f4bdd93f02088f0099a6fb1bfe46d3ab3313d09c6f64c536ed745235e6f63990","durable_external_copy_verified":true}
 ]

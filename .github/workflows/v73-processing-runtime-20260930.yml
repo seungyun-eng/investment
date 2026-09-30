@@ -1,0 +1,51 @@
+name: V73 pinned processing runtime
+on:
+  push:
+    branches: [chatgpt-v73-raw-recovery-20260930]
+    paths: [.github/workflows/v73-processing-runtime-20260930.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: v73-processing-runtime
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch verified public pinned wheel only
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import datetime,hashlib,json,os,pathlib,urllib.request,urllib.parse
+          target=pathlib.Path('processing_runtime');target.mkdir()
+          with urllib.request.urlopen('https://pypi.org/pypi/pyarrow/21.0.0/json',timeout=30) as r: metadata=json.load(r)
+          candidates=[x for x in metadata['urls'] if x['filename'].endswith('cp313-cp313-manylinux_2_28_x86_64.whl')]
+          assert len(candidates)==1,'unexpected wheel selection'
+          entry=candidates[0]
+          assert urllib.parse.urlsplit(entry['url']).hostname=='files.pythonhosted.org'
+          repo=os.environ['GITHUB_REPOSITORY']; token=os.environ['GITHUB_TOKEN']; used=0
+          for page in range(1,101):
+              req=urllib.request.Request('https://api.github.com/repos/'+repo+'/actions/artifacts?per_page=100&page='+str(page),headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','User-Agent':'V73-processing-runtime'})
+              with urllib.request.urlopen(req,timeout=30) as r: inventory=json.load(r)
+              used+=sum(x['size_in_bytes'] for x in inventory['artifacts'] if not x['expired'])
+              if len(inventory['artifacts'])<100:break
+          else:raise RuntimeError('incomplete artifact inventory')
+          assert used+entry['size']+2*1024**2<400*1024**2,'preserve existing acquisition storage headroom; no paid expansion'
+          with urllib.request.urlopen(entry['url'],timeout=90) as r: data=r.read(64*1024**2+1)
+          assert len(data)==entry['size'] and len(data)<64*1024**2
+          digest=hashlib.sha256(data).hexdigest();assert digest==entry['digests']['sha256']
+          (target/entry['filename']).write_bytes(data)
+          receipt={'name':'pyarrow','version':'21.0.0','filename':entry['filename'],'sha256':digest,'bytes':len(data),'source_url':entry['url'],'pypi_metadata_url':'https://pypi.org/pypi/pyarrow/21.0.0/json','verified_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'artifact_bytes_before':used,'sec_requests':0,'financial_input_changes':False}
+          (target/'runtime_receipt.json').write_text(json.dumps(receipt,indent=2));print(json.dumps(receipt))
+          PY
+      - name: Preserve dependency for offline processing
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-pyarrow21-cp313-${{ github.run_id }}
+          path: processing_runtime/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error

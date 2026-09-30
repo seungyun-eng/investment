@@ -1,0 +1,20 @@
+{
+  "source": "provided_readonly_snapshot_features_filings_entity_column",
+  "snapshot_sha256": "63dda6be2928b5b6f93badf9b6ee1a1f52999628721120ddcd0241b98783bb1d",
+  "issuer_count": 809,
+  "canonical_sha256": "d2e4109db94c7d5daae15d3c1bb189e71af19675ef6940615ee5ecd1f3c5ec24",
+  "canonical_format": "sorted unique ten-digit CIKs, LF separated, final LF",
+  "transport_corrections": {
+    "remove": ["0000078927", "0000884487"],
+    "add": ["0000063908", "0000884887"]
+  },
+  "note": "Corrections repair the text transport only; the checksum must exactly reproduce the uploaded snapshot issuer set. Abort on any discrepancy. No universe change.",
+  "collection_period_start": "2007-01-01",
+  "collection_period_end": "2026-09-23",
+  "analysis_period_start": "2009-01-02",
+  "analysis_period_end": "2026-09-23",
+  "all_membership_observations_retained": 2225543,
+  "original_source_security_records": 912,
+  "baseline_filing_rows": 75253,
+  "archive_scope_is_candidate_acquisition_not_security_certification": true
+}

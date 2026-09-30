@@ -1,0 +1,5 @@
+name: V73 verified archival transfer retry
+description: Continue acquisition after durable upload, bounded by free artifact storage, and preserve unacknowledged originals.
+runs:
+  using: node24
+  main: driver.js

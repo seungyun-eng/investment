@@ -27,7 +27,6 @@ jobs:
           import sys
           sys.path.insert(0,'research/v73_archive_scope')
           import artifact_handoff as h
-          # Largest explicitly preserved legacy ZIP is 127 MB; live artifact ceiling remains 400 MiB.
           h.MAX_ZIP=160*1024**2
           h.main()
           PY
@@ -35,8 +34,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          python3 -m py_compile research/v73_archive_scope/bootstrap_verified_resume.py
+          python3 -m py_compile research/v73_archive_scope/bootstrap_verified_resume.py research/v73_archive_scope/apply_durable_retry.py
           python3 research/v73_archive_scope/bootstrap_verified_resume.py
+          node --check research/v73_archive_scope/durable_key_store.cjs
+          python3 research/v73_archive_scope/apply_durable_retry.py
           python3 -m py_compile research/v73_archive_scope/fast_transport.py research/v73_archive_scope/apply_fast_transport.py research/v73_archive_scope/apply_handoff_monitor.py
           python3 research/v73_archive_scope/apply_fast_transport.py
           python3 research/v73_archive_scope/apply_handoff_monitor.py

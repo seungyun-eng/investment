@@ -1,0 +1,56 @@
+name: V73 legacy issuer financial notes
+on:
+  push:
+    branches: [chatgpt-v73-raw-recovery-20260930]
+    paths: [.github/workflows/v73-issuer-notes.yml]
+permissions:
+  contents: read
+concurrency:
+  group: v73-primary-document-recovery
+  cancel-in-progress: false
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Collect linked original financial pages
+        run: |
+          mkdir -p out/raw
+          python3 - <<'PY'
+          import datetime,hashlib,json,pathlib,re,time,urllib.request,urllib.parse,urllib.error
+          from html.parser import HTMLParser
+          class Links(HTMLParser):
+            def __init__(self):super().__init__();self.links=[]
+            def handle_starttag(self,t,a):
+              if t=='a' and dict(a).get('href'):self.links.append(dict(a)['href'])
+          root=pathlib.Path('out');rows=[];seen=set();blocked=False
+          queue=[(2011,'https://www.microsoft.com/investor/reports/ar11/financial_review/index.html',0),(2012,'https://www.microsoft.com/investor/reports/ar12/financial-review/index.html',0),(2013,'https://www.microsoft.com/investor/reports/ar13/financial-review/index.html',0)]
+          while queue and not blocked:
+            year,url,depth=queue.pop(0);url=urllib.parse.urldefrag(url)[0]
+            if url in seen:continue
+            seen.add(url);row={'report_year':year,'url':url,'retrieved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'role':'linked_financial_report','approved_feature':False};time.sleep(1)
+            try:
+              req=urllib.request.Request(url,headers={'User-Agent':'V73Research/1.0 (https://github.com/seungyun-eng/investment)','Accept-Encoding':'identity'})
+              with urllib.request.urlopen(req,timeout=45) as r:data=r.read(32*1024*1024+1);row.update(http_status=r.status,response_url=r.geturl(),content_type=r.headers.get('Content-Type'))
+              if len(data)>32*1024*1024:raise ValueError('document bound exceeded')
+              if b'<html' not in data[:10000].lower() and b'<!doctype' not in data[:10000].lower():raise ValueError('not HTML')
+              sha=hashlib.sha256(data).hexdigest();dest=root/'raw'/(sha+'.html');dest.write_bytes(data);row.update(status='RETRIEVED',sha256=sha,bytes=len(data),file=str(dest.relative_to(root)))
+              p=Links();p.feed(data.decode('utf-8',errors='replace'))
+              for link in p.links:
+                child=urllib.parse.urldefrag(urllib.parse.urljoin(url,link))[0]
+                if depth<2 and urllib.parse.urlparse(child).hostname=='www.microsoft.com' and '/ar'+str(year)[-2:]+'/' in child and re.search(r'notes?|statement|balance|stockholder|financial.review',child,re.I) and child not in seen:
+                  queue.append((year,child,depth+1))
+            except urllib.error.HTTPError as e:
+              row.update(status='HTTP_ERROR',http_status=e.code,error=str(e));blocked=e.code in (403,429)
+            except Exception as e:row.update(status='ERROR',error=str(e))
+            rows.append(row);(root/'download_receipts.json').write_text(json.dumps(rows,indent=2));print(json.dumps(row),flush=True)
+          (root/'summary.json').write_text(json.dumps({'source_records':len(rows),'retrieved_documents':sum(r['status']=='RETRIEVED' for r in rows),'unique_original_files':len(list((root/'raw').glob('*.html'))),'bytes':sum(p.stat().st_size for p in (root/'raw').glob('*.html')),'blocked':blocked,'feature_approvals':0},indent=2))
+          PY
+      - name: Preserve original notes
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-original-notes-${{ github.run_id }}
+          path: out/
+          retention-days: 1
+          compression-level: 9

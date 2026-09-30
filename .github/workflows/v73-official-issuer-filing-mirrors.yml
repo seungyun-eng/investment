@@ -1,0 +1,68 @@
+name: V73 official issuer primary filing copies
+on:
+  push:
+    branches: [chatgpt-v73-raw-recovery-20260930]
+    paths: [.github/workflows/v73-official-issuer-filing-mirrors.yml]
+permissions:
+  contents: read
+concurrency:
+  group: v73-primary-document-recovery
+  cancel-in-progress: false
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - name: Retrieve independently hosted official issuer documents
+        run: |
+          mkdir -p out/raw
+          python3 - <<'PY'
+          import datetime,hashlib,json,pathlib,time,urllib.request,urllib.error,urllib.parse,urllib.robotparser
+          out=pathlib.Path('out'); receipts=[]; denied=set(); robots={}
+          ua='V73Research/1.0 (research contact: seungyun@berkeley.edu)'
+          targets=[
+            ('MSFT','0000789019','0001564590-20-034944','https://microsoft.gcs-web.com/node/28366/html'),
+            ('MSFT','0000789019','0001564590-20-034944','https://microsoft.gcs-web.com/static-files/b83ca379-b6d8-43af-acc6-80ac67325ebf'),
+            ('PANW','0001327567','0001327567-20-000032','https://investors.paloaltonetworks.com/node/9701/html'),
+            ('AVGO','0001730168','0001730168-20-000226','https://investors.broadcom.com/node/54076/html'),
+            ('AKAM','0001086222','0001086222-21-000075','https://www.ir.akamai.com/sec-filings/sec-filing/10-k/0001086222-21-000075'),
+            ('CRWD','0001535527','0001535527-20-000006','https://ir.crowdstrike.com/sec-filings/sec-filing/10-k/0001535527-20-000006')]
+          def get(url,bound):
+            time.sleep(1)
+            req=urllib.request.Request(url,headers={'User-Agent':ua,'Accept-Encoding':'identity'})
+            with urllib.request.urlopen(req,timeout=50) as res:
+              b=res.read(bound+1)
+              if len(b)>bound:raise ValueError('response too large')
+              return b,res.status,res.geturl(),res.headers.get('Content-Type','')
+          for ticker,cik,acc,url in targets:
+            host=urllib.parse.urlparse(url).netloc;row={'ticker':ticker,'cik':cik,'accession':acc,'url':url,'retrieved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'approved_for_features':False}
+            if host in denied:row['status']='SKIPPED_HOST_ACCESS_STOP';receipts.append(row);continue
+            try:
+              if host not in robots:
+                rp=urllib.robotparser.RobotFileParser();ru=f'https://{host}/robots.txt'
+                try:
+                  rb,rs,rf,rc=get(ru,2*1024*1024);rp.parse(rb.decode('utf-8','replace').splitlines());robots[host]=rp
+                  h=hashlib.sha256(rb).hexdigest();(out/'raw'/(h+'.robots.txt')).write_bytes(rb)
+                  receipts.append({'url':ru,'status':'ROBOTS_RETRIEVED','sha256':h,'bytes':len(rb),'file':f'raw/{h}.robots.txt'})
+                except urllib.error.HTTPError as e:
+                  if e.code==404:rp.parse([]);robots[host]=rp
+                  else:raise
+              if not robots[host].can_fetch(ua,url):row['status']='ROBOTS_DISALLOWED';receipts.append(row);continue
+              data,status,final,ctype=get(url,32*1024*1024)
+              h=hashlib.sha256(data).hexdigest();(out/'raw'/(h+'.bin')).write_bytes(data)
+              row.update(status='RETRIEVED',http_status=status,sha256=h,bytes=len(data),file=f'raw/{h}.bin',response_url=final,content_type=ctype)
+            except urllib.error.HTTPError as e:
+              row.update(status='HTTP_ERROR',http_status=e.code,error=str(e))
+              if e.code in (401,403,429):denied.add(host)
+            except Exception as e:row.update(status='ERROR',error=type(e).__name__+': '+str(e))
+            receipts.append(row);(out/'receipts.json').write_text(json.dumps(receipts,indent=2));print(json.dumps(row),flush=True)
+          (out/'receipts.json').write_text(json.dumps(receipts,indent=2));(out/'summary.json').write_text(json.dumps({'target_count':len(targets),'retrieved':sum(x.get('status')=='RETRIEVED' for x in receipts),'host_access_stops':sorted(denied),'sec_access_stop_preserved':True,'feature_approvals':0,'full_pit_ready':False},indent=2))
+          PY
+      - name: Save real bytes and receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-issuer-primary-${{ github.run_id }}
+          path: out/
+          retention-days: 1
+          compression-level: 9

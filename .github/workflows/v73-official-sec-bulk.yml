@@ -1,0 +1,48 @@
+name: V73 official SEC primary collection
+on:
+  push:
+    branches: [chatgpt-v73-raw-recovery-20260930]
+    paths: [.github/workflows/v73-official-sec-bulk.yml]
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: v73-sec-direct-access
+  cancel-in-progress: false
+jobs:
+  acquire:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - name: Read isolated collector
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Prepare official-source transport
+        run: |
+          npm install --no-audit --no-fund --ignore-scripts --no-package-lock @actions/artifact@2.3.2
+          python3 - <<'PY'
+          from pathlib import Path
+          import py_compile,shutil
+          assert shutil.disk_usage('.').free>5*1024**3
+          py_compile.compile('research/v73_archive_scope/direct_sec_collector.py',doraise=True)
+          target=Path('.github/actions/v73-sec-direct-driver');target.mkdir()
+          original=Path('.github/actions/v73-retry-driver')
+          (target/'action.yml').write_bytes((original/'action.yml').read_bytes())
+          script=(original/'driver.js').read_text().replace('research/v73_archive_scope/retry_collector.py','research/v73_archive_scope/direct_sec_collector.py').replace("'v73-retry-raw-'","'v73-official-raw-'")
+          (target/'driver.js').write_text(script)
+          PY
+          node --check .github/actions/v73-sec-direct-driver/driver.js
+      - name: Collect original SEC responses and exact filing metadata
+        uses: ./.github/actions/v73-sec-direct-driver
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONUNBUFFERED: '1'
+      - name: Preserve receipt and acquisition checkpoint
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v73-official-checkpoint-${{ github.run_id }}
+          path: retry_work/metadata/
+          retention-days: 1
+          compression-level: 9

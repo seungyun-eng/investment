@@ -1,0 +1,5 @@
+name: V73 bounded archival transport
+description: Preserve each acquired raw-content chunk and wait for a verified external copy before releasing temporary artifact storage.
+runs:
+  using: node24
+  main: driver.js

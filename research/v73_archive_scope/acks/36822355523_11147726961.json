@@ -1,0 +1,14 @@
+{
+  "artifact_id": 11147726961,
+  "downloaded_zip_sha256": "cd223afcf10e30199ee7daeadc4387fc55de107bccc998da53471d2ee9bb3794",
+  "gzip_bytes_verified": 25177444,
+  "keys_verified": 209,
+  "manifest_sha256": "3def0703c6062c1eb34c1356a276c68cc76b0edf11023a96616e3f418cd83d42",
+  "name": "v73-official-raw-36822355523-0030",
+  "raw_bytes_verified": 378073298,
+  "records_verified": 209,
+  "run_id": 36822355523,
+  "total_uncompressed_zip_bytes": 28476379,
+  "verified": true,
+  "zip_bytes": 28529129
+}

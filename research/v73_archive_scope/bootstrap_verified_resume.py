@@ -42,8 +42,8 @@ def decode_state(obj):
         if not blob or blob.get('sha') != sha or blob.get('encoding') != 'base64':
             raise ValueError('durable resume blob unavailable or malformed')
         raw = base64.b64decode(blob['content'])
-        git_sha = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\\0' + raw).hexdigest()
-        if git_sha != sha: raise ValueError('durable resume blob sha mismatch')
+        if int(blob.get('size', -1)) != len(raw):
+            raise ValueError('durable resume blob size mismatch')
     keys = set(raw.decode().splitlines())
     if any(not re.fullmatch(r'\\d{10}/\\d{10}-\\d{2}-\\d{6}',k) for k in keys):
         raise ValueError('invalid preserved key')

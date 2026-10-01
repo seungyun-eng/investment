@@ -35,6 +35,13 @@
     "durable_external_copy_verified": true
   },
   {
+    "artifact_id": 11127228067,
+    "run_id": 36777639887,
+    "name": "v73-official-checkpoint-36777639887",
+    "zip_sha256": "c166cd2f1b96402c4a432210184213f2e0a6d00470f967e39ec6e7d0c2593886",
+    "durable_external_copy_verified": true
+  },
+  {
     "artifact_id": 11158136050,
     "run_id": 36822355523,
     "name": "v73-official-checkpoint-36822355523",

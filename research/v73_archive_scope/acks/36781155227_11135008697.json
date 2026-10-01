@@ -1,0 +1,9 @@
+{
+  "run_id": 36781155227,
+  "artifact_id": 11135008697,
+  "manifest_sha256": "a0205782d3b50d8fadd1d2a92c2fd91dad7994be784ff61c23400409e2760c69",
+  "downloaded_zip_sha256": "113cc494308d591b9d2066a545526ccd68400c416017cd67ee52e1ef468dd31e",
+  "verified": true,
+  "records_verified": 256,
+  "raw_bytes_verified": 377668611
+}

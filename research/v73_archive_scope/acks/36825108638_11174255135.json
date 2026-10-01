@@ -1,0 +1,12 @@
+{
+  "verified": true,
+  "staging_verified": true,
+  "staging_store": "ChatGPT Library /주식/SEC_원문_검증보관/v73-official-raw-36825108638-0020.zip",
+  "run_id": 36825108638,
+  "artifact_id": 11174255135,
+  "manifest_sha256": "d37a277a7b6bb2c0c9cebedf12e46df991d15886548c7cf2b37f6db8f5378b5b",
+  "downloaded_zip_sha256": "295af81112c9b8c9838b8881f8fd68f408c2b0f0ade788cb197beb0aa1a40797",
+  "records_verified": 176,
+  "raw_bytes_verified": 474674689,
+  "onedrive_final": false
+}

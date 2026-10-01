@@ -1,0 +1,12 @@
+{
+  "verified": true,
+  "run_id": 36825108638,
+  "artifact_id": 11160250796,
+  "manifest_sha256": "41a7d856d9c26da5e98628e11b87f703930c70a08424d1b47dd4af20915a9d94",
+  "downloaded_zip_sha256": "863c657004b905a4dbca2651f1ab7b6537f5d39b119fd0a713a4ef380a56a8ad",
+  "records_verified": 197,
+  "raw_bytes_verified": 352716102,
+  "staging_library_path": "/주식/SEC_원문_검증보관/v73-official-raw-36825108638-0000.zip",
+  "staging_verified": true,
+  "onedrive_final": false
+}

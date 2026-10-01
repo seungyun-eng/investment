@@ -31,8 +31,22 @@ def request(route, method='GET', payload=None, binary=False):
     raise RuntimeError('unreachable request state')
 def decode_state(obj):
     if obj is None: return set()
-    keys = set(base64.b64decode(obj['content']).decode().splitlines())
-    if any(not re.fullmatch(r'\d{10}/\d{10}-\d{2}-\d{6}',k) for k in keys): raise ValueError('invalid preserved key')
+    encoded = obj.get('content') or ''
+    encoding = obj.get('encoding')
+    if encoding == 'base64' and encoded:
+        raw = base64.b64decode(encoded)
+    else:
+        sha = obj.get('sha')
+        if not sha: raise ValueError('durable resume index has no blob sha')
+        blob = request('/git/blobs/' + sha)
+        if not blob or blob.get('sha') != sha or blob.get('encoding') != 'base64':
+            raise ValueError('durable resume blob unavailable or malformed')
+        raw = base64.b64decode(blob['content'])
+        git_sha = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\\0' + raw).hexdigest()
+        if git_sha != sha: raise ValueError('durable resume blob sha mismatch')
+    keys = set(raw.decode().splitlines())
+    if any(not re.fullmatch(r'\\d{10}/\\d{10}-\\d{2}-\\d{6}',k) for k in keys):
+        raise ValueError('invalid preserved key')
     return keys
 state = request('/contents/' + STATE + '?ref=' + BRANCH)
 keys = decode_state(state)

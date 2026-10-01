@@ -110,7 +110,18 @@ class Client:
         for attempt in range(5):
             current=self.api('/contents/'+STATE+'?ref='+BRANCH)
             if current is None: raise ValueError('durable state missing; refusing destructive cleanup')
-            keys=set(base64.b64decode(current['content']).decode().splitlines())
+            encoded=current.get('content') or ''
+            if current.get('encoding')=='base64' and encoded:
+                raw=base64.b64decode(encoded)
+            else:
+                blobsha=current.get('sha')
+                if not blobsha: raise ValueError('durable state missing blob sha')
+                blob=self.api('/git/blobs/'+blobsha)
+                if not blob or blob.get('sha')!=blobsha or blob.get('encoding')!='base64':
+                    raise ValueError('durable state blob unavailable')
+                raw=base64.b64decode(blob['content'])
+                if int(blob.get('size',-1))!=len(raw): raise ValueError('durable state blob size mismatch')
+            keys=set(raw.decode().splitlines())
             if any(not KEY.fullmatch(k) for k in keys): raise ValueError('invalid durable state')
             union=keys|newkeys
             if union==keys: return

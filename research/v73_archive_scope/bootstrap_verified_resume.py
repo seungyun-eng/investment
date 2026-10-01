@@ -45,7 +45,7 @@ def decode_state(obj):
         if int(blob.get('size', -1)) != len(raw):
             raise ValueError('durable resume blob size mismatch')
     keys = set(raw.decode().splitlines())
-    if any(not re.fullmatch(r'\\d{10}/\\d{10}-\\d{2}-\\d{6}',k) for k in keys):
+    if any(not re.fullmatch(r'\d{10}/\d{10}-\d{2}-\d{6}',k) for k in keys):
         raise ValueError('invalid preserved key')
     return keys
 state = request('/contents/' + STATE + '?ref=' + BRANCH)
